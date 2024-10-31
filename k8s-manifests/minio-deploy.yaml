@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minio
+  namespace: minio-dev
+spec:
+  serviceName: minio
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: leoserver0 #server with ssd
+      containers:
+      - name: minio
+        image: quay.io/minio/minio:latest
+        command: ["minio", "server", "/data"]
+        args: ["--console-address", ":9001"]
+        volumeMounts:
+        - mountPath: /data
+          name: localvolume
+      volumes:
+      - name: localvolume
+        hostPath:
+          path: /var/lib/minio/data
+          type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: minio-dev  # Ensure this matches the namespace in your HTTPRoute
+spec:
+  selector:
+    app: minio  # Should match the label on your MinIO pods
+  ports:
+    - protocol: TCP
+      port: 9001  # MinIO's default port
+      targetPort: 9001
+---
+#Expose to Kong Gateway ----------------------
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: minio
+  namespace: gateway
+  annotations:
+    konghq.com/strip-path: "true"
+spec:
+  parentRefs:
+    - name: kong
+      namespace: gateway
+  hostnames:
+    - minio.cloudificando.corp
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: minio
+          port: 9001
+          kind: Service
+          namespace: minio-dev
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: minio
+  namespace: minio-dev
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: gateway
+  to:
+    - group: ""
+      kind: Service

@@ -1,0 +1,103 @@
+#helm repo add apache-airflow https://airflow.apache.org
+#helm repo update
+# airflow-rbac.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: airflow
+  namespace: airflow
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: airflow-role
+  namespace: airflow
+rules:
+  - apiGroups: ["", "apps", "batch"]
+    resources: ["pods", "pods/log", "pods/exec", "deployments", "jobs"]
+    verbs: ["create", "delete", "get", "list", "watch", "patch", "update"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: airflow-rolebinding
+  namespace: airflow
+subjects:
+  - kind: ServiceAccount
+    name: airflow
+    namespace: airflow
+roleRef:
+  kind: Role
+  name: airflow-role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# airflow-networkpolicy.yaml
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: airflow-network-policy
+  namespace: airflow
+spec:
+  podSelector:
+    matchLabels:
+      component: airflow
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              component: airflow
+      ports:
+        - protocol: TCP
+          port: 8080
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              component: airflow
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: airflow-web
+  namespace: gateway
+  annotations:
+    konghq.com/strip-path: "true"
+spec:
+  parentRefs:
+    - name: kong
+      namespace: gateway
+  hostnames:
+    - airflow.cloudificando.corp
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: airflow-webserver
+          port: 8080
+          kind: Service
+          namespace: airflow
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: airflow-web
+  namespace: airflow
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: gateway
+  to:
+    - group: ""
+      kind: Service

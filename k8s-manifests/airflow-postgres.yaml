@@ -1,0 +1,121 @@
+# # add repo for postgres-operator
+# helm repo add postgres-operator-charts https://opensource.zalando.com/postgres-operator/charts/postgres-operator
+
+# # install the postgres-operator
+# helm install postgres-operator postgres-operator-charts/postgres-operator \
+#   --namespace airflow \
+#   --set configKubernetes.namespace=airflow
+---
+# apiVersion: "acid.zalan.do/v1"
+# kind: postgresql
+# metadata:
+#   name: acid-minimal-cluster
+# spec:
+#   teamId: "acid"
+#   volume:
+#     size: 1Gi
+#   numberOfInstances: 2
+#   users:
+#     zalando:  # database owner
+#     - superuser
+#     - createdb
+#     foo_user: []  # role for application foo
+#   databases:
+#     foo: zalando  # dbname: owner
+#   preparedDatabases:
+#     bar: {}
+#   postgresql:
+#     version: "16"
+---
+# apiVersion: "acid.zalan.do/v1"
+# kind: postgresql
+# metadata:
+#   name: airflow-db
+#   namespace: airflow
+# spec:
+#   teamId: "airflow"
+#   volume:
+#     size: 10Gi
+#   numberOfInstances: 1  # Single-instance
+#   users:
+#     airflow:
+#       - superuser
+#       - createdb
+#   databases:
+#     airflow: airflow
+#   postgresql:
+#     version: "14"
+#   enableMasterLoadBalancer: false
+#   enableReplicaLoadBalancer: false
+#   allowedSourceRanges: []
+#   patroni:
+#     initdb:
+#       encoding: UTF8
+#       locale: en_US.UTF-8
+#   resources:
+#     requests:
+#       cpu: "500m"
+#       memory: "1Gi"
+#     limits:
+#       cpu: "1"
+#       memory: "2Gi"
+#   podPriorityClassName: ""
+#   secrets:
+#     password: airflow-postgres-secret  # Reference to the secret
+---
+# apiVersion: "acid.zalan.do/v1"
+# kind: postgresql
+# metadata:
+#   name: airflow-db
+#   namespace: airflow
+# spec:
+#   teamId: "airflow"
+#   volume:
+#     size: 10Gi
+#   numberOfInstances: 1  # Single-instance PostgreSQL
+#   users:
+#     airflow: []  # No additional roles
+#   databases:
+#     airflow: airflow  # Database owned by user 'airflow'
+#   postgresql:
+#     version: "14"
+#   patroni:
+#     initdb:
+#       encoding: UTF8
+#       locale: en_US.UTF-8
+#   enableConnectionPooler: false
+#   secrets:
+#     password: postgres-airflow-secret
+# airflow-postgres.yaml
+---
+apiVersion: "acid.zalan.do/v1"
+kind: postgresql
+metadata:
+  name: airflow-db
+  namespace: airflow
+spec:
+  teamId: "airflow"
+  volume:
+    size: 10Gi
+  numberOfInstances: 1  # Single-instance
+  users:
+    airflow: []  # Map of usernames to user flags (empty array if no flags)
+  databases:
+    airflow: airflow  # Database owned by 'airflow' user
+  postgresql:
+    version: "14"
+  enableMasterLoadBalancer: false
+  enableReplicaLoadBalancer: false
+  allowedSourceRanges: []
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "1"
+      memory: "2Gi"
+  patroni:
+    initdb:
+      encoding: "UTF8"
+      locale: "en_US.UTF-8"
+      data-checksums: "true"
