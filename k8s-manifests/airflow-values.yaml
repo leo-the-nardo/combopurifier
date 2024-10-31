@@ -2,31 +2,39 @@ executor: KubernetesExecutor
 
 images:
   airflow:
-    repository: apache/airflow
+    repository: cloudificando/airflow
     tag: "2.10.2"
     pullPolicy: IfNotPresent
 
 config:
   core:
     dags_are_paused_at_creation: false
-    secret_key: "9PyXWOfUoUSBmr_ddbSjpUZPgbum4dD_XeDt40d6nNg"  # Replace with your own secret key
-    fernet_key: "LxRf3H3svpelAJEYhzZ7oexsxsP2eRPPJjPUO3P8T2g="  # Replace with your own Fernet key
   kubernetes:
     namespace: "airflow"
     in_cluster: true
     delete_worker_pods: true
-  database:
-    sql_alchemy_conn: "postgresql+psycopg2://airflow:{{ .Values.secrets.postgresPassword }}@airflow-db.airflow.svc.cluster.local:5432/airflow"
-
+data:
+  metadataSecretName: airflow-secrets
+postgresql:
+  enabled: false
+webserverSecretKeySecretName: airflow-secrets
 dags:
   gitSync:
     enabled: true
     repo: "https://github.com/leo-the-nardo/combopurifier.git"  # Replace with your Git repository
+    # repo: "git@github.com:leo-the-nardo/combopurifier.git"  # Replace with your Git repository
     branch: "main"
     rev: "HEAD"
     depth: 1
     wait: 60
-    credentialsSecret: "git-credentials-secret"
-
-secrets:
-  postgresPassword: ""
+    subPath: "dags/"
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 30m
+        memory: 64Mi
+    credentialsSecret: "git-credentials"
+    # sshKeySecret: "git-ssh-key-secret"
+    # knownHosts: |
