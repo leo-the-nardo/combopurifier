@@ -31,7 +31,7 @@ with DAG(
     # SQS Sensor Task
     wait_for_sqs_message = SqsSensor(
         task_id='wait_for_sqs_message',
-        aws_conn_id='aws_default',  # Ensure this matches your Airflow connection
+        aws_conn_id='sqs-connection-combopretifier',  # Ensure this matches your Airflow connection
         sqs_queue='https://sqs.us-east-2.amazonaws.com/068064050187/input-notification',  # Replace with your SQS queue URL
         max_messages=10,              # Maximum number of messages to retrieve per batch (up to 10)
         num_batches=1,                # Number of batches to retrieve per poke
