@@ -33,7 +33,7 @@ dags:
     branch: "main"
     rev: "HEAD"
     depth: 1
-    wait: 60
+    wait: 30
     subPath: "dags/"
     resources:
       requests:
