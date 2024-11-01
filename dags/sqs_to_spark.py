@@ -44,10 +44,11 @@ with DAG(
     )
 
     @task
-    def process_and_send_to_webhook(messages):
+    def process_and_send_to_webhook(**context):
         """
         Task to process SQS messages and send them to a webhook via HTTP POST.
         """
+        messages = context['ti'].xcom_pull(task_ids='wait_for_sqs_message', key='messages')
         if not messages:
             print("No messages to process.")
             return
@@ -100,4 +101,4 @@ with DAG(
                 raise AirflowException(f"Failed to process message {message.get('MessageId')}") from e
 
     # Define task dependencies
-    wait_for_sqs_message >> process_and_send_to_webhook(wait_for_sqs_message.output)
+    wait_for_sqs_message >> process_and_send_to_webhook()

@@ -42,6 +42,11 @@ spec:
     - protocol: TCP
       port: 9001  # MinIO's default port
       targetPort: 9001
+      name: port1
+    - protocol: TCP
+      port: 9000  # MinIO's default port
+      targetPort: 9000
+      name: port0
 ---
 #Expose to Kong Gateway ----------------------
 apiVersion: gateway.networking.k8s.io/v1
