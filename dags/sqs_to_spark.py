@@ -55,13 +55,13 @@ with DAG(
         # Initialize the HTTP Hook
         http_hook = HttpHook(
             method='POST',
-            http_conn_id='webhook_connection',  # Ensure this matches your Airflow HTTP connection
+            http_conn_id='webhook-test',  # Ensure this matches your Airflow HTTP connection
         )
 
         # Define the webhook endpoint path if needed
         # For example, if the full URL is used in the connection, you can leave it empty
         # Otherwise, specify the relative path
-        endpoint = 'https://curved-appointment-40.webhook.cool'  # e.g., '/path/to/endpoint' if needed
+        endpoint = ''  # e.g., '/path/to/endpoint' if needed
 
         for message in messages:
             try:
