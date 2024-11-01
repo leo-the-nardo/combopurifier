@@ -19,7 +19,7 @@ default_args = {
 
 # Define the DAG
 with DAG(
-    dag_id='sqs_to_webhook_dag',
+    dag_id='sqs_s3_to_spark',
     default_args=default_args,
     description='A DAG that retrieves messages from SQS and sends them to a webhook',
     schedule_interval=None,
