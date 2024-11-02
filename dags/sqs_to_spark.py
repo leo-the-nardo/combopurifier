@@ -47,7 +47,7 @@ def init():
         mode='poke',                  # 'poke' or 'reschedule'
         visibility_timeout=30,        # Visibility timeout for messages
         delete_message_on_reception=True,  # Ensure messages are deleted upon retrieval
-        deferrabe=True,              # Allow deferring the task
+        deferrable=True,              # Allow deferring the task
     )
 
     @task
