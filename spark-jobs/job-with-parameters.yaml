@@ -1,0 +1,38 @@
+apiVersion: "sparkoperator.k8s.io/v1beta2"
+kind: SparkApplication
+metadata:
+  name: job-with-parameters
+  namespace: processing
+spec:
+  arguments:
+    - job_name=teste-param
+    - source_bucket=s3a://spok-landing/users/*
+    - target_bucket=s3a://spok-lakehouse/bronze/users
+  deps:
+    pyFiles:
+      - local:///opt/spark/work-dir/spark_session.py
+  sparkConf:
+    spark.hadoop.fs.s3a.impl: "org.apache.hadoop.fs.s3a.S3AFileSystem"
+    spark.sql.extensions: "io.delta.sql.DeltaSparkSessionExtension"
+    spark.sql.catalog.spark_catalog: "org.apache.spark.sql.delta.catalog.DeltaCatalog"
+    spark.hadoop.fs.s3a.path.style.access: "True"
+    spark.hadoop.fs.s3a.fast.upload: "True"
+    spark.hadoop.fs.s3a.multipart.size: "104857600"
+    spark.hadoop.fs.s3a.connection.maximum: "100"
+  type: Python
+  mode: cluster
+  image: "tiagotxm/owshq:spark-3.2.3-delta"
+  imagePullPolicy: IfNotPresent
+  mainApplicationFile: "s3a://spok-scripts/job-with-parameters.py"
+  sparkVersion: "3.2.3"
+  restartPolicy:
+    type: Never
+  driver:
+    cores: 1
+    coreLimit: "1200m"
+    memory: "1024m"
+    serviceAccount: spark-operator-spark
+  executor:
+    cores: 1
+    instances: 2
+    memory: "512m"
