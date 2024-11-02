@@ -8,7 +8,7 @@ import json
 
 # Default arguments for the DAG
 default_args = {
-    'owner': 'airflow',
+    'owner': 'leonardo@cloudificando.com',
     'depends_on_past': False,
     'email': ['leonardo@cloudificando.com'],
     'email_on_failure': False,
