@@ -64,5 +64,5 @@ def init():
     end = EmptyOperator(task_id="end")
 
     # Define task dependencies
-    wait_for_sqs_message >> process_spark()
+    start >> wait_for_sqs_message >> process_spark() >> end
 dag = init()
