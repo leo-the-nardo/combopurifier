@@ -43,7 +43,7 @@ def init():
         num_batches=1,                # Number of batches to retrieve per poke
         wait_time_seconds=20,         # Long polling duration (seconds)
         poke_interval=30,             # How often to poke the queue (seconds)
-        timeout=600,                  # Timeout for the sensor (seconds)
+        timeout=None,                  # Timeout for the sensor (seconds)
         mode='poke',                  # 'poke' or 'reschedule'
         visibility_timeout=30,        # Visibility timeout for messages
         delete_message_on_reception=True,  # Ensure messages are deleted upon retrieval

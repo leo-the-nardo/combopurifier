@@ -4,15 +4,6 @@ import sys
 from pyspark.sql import SparkSession
 
 def parse_s3_path(s3_path):
-    """
-    Parses an S3 URI into bucket and key.
-    
-    Args:
-        s3_path (str): S3 URI (e.g., s3://bucket/key)
-    
-    Returns:
-        tuple: (bucket, key)
-    """
     if not s3_path.startswith("s3://"):
         raise ValueError("Invalid S3 path")
     s3_path = s3_path[5:]
@@ -22,15 +13,6 @@ def parse_s3_path(s3_path):
     return parts[0], parts[1]
 
 def main(txt_s3_path, output_txt_s3_path, master_delta_s3_path, master_delta_table_path):
-    """
-    Main function to process a single TXT file using Spark SQL.
-    
-    Args:
-        txt_s3_path (str): S3 path to the TXT file.
-        output_txt_s3_path (str): S3 path to write the cleaned TXT file.
-        master_delta_s3_path (str): S3 path to the master Delta Lake dataset.
-        master_delta_table_path (str): S3 path to the master Delta Lake table.
-    """
     spark = SparkSession.builder \
         .appName("ProcessTxtFileSQL") \
         .getOrCreate()
