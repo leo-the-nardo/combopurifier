@@ -32,7 +32,7 @@ dags:
     # repo: "git@github.com:leo-the-nardo/combopurifier.git"  # Replace with your Git repository
     branch: "main"
     rev: "HEAD"
-    depth: 3
+    depth: 1
     wait: 30
     subPath: "dags/"
     resources:
