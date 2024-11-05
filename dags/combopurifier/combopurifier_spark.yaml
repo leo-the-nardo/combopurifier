@@ -4,11 +4,11 @@ metadata:
   name: job-with-parameters
   namespace: spark-jobs
 spec:
-  arguments:
-    - job_name=combopurifier-job
-    - source_bucket=s3a://landing/{{ file_input_key }}
-    - target_bucket=s3a://lakehouse/bronze/combos/job-combopurifier-{{ id }}
-    - master_bucket=s3a://lakehouse/silver/combos/master
+#  arguments:
+#    - source_bucket=s3a://landing/{{ file_input_key }}
+#    - target_bucket=s3a://lakehouse/bronze/combos/job-combopurifier-{{ id }}
+#    - job_name=combopurifier-job
+#    - master_bucket=s3a://lakehouse/silver/combos/master
   sparkConf:
     spark.hadoop.fs.s3a.impl: "org.apache.hadoop.fs.s3a.S3AFileSystem"
     spark.sql.extensions: "io.delta.sql.DeltaSparkSessionExtension"
