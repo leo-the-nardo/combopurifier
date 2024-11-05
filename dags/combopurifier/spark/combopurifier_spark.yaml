@@ -46,7 +46,7 @@ spec:
     envFrom:
       - secretRef:
           name: s3-onprem-combopurifier
-#    serviceAccount: spark-operator-spark
+    serviceAccount: spark-operator-spark
   executor:
     cores: 1
     instances: 2
