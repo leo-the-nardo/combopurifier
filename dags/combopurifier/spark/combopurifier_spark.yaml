@@ -2,7 +2,7 @@ apiVersion: "sparkoperator.k8s.io/v1beta2"
 kind: SparkApplication
 metadata:
   name: job-with-parameters
-  namespace: processing
+  namespace: spark-jobs
 spec:
   arguments:
     - job_name=combopurifier-job
@@ -46,7 +46,7 @@ spec:
     envFrom:
       - secretRef:
           name: s3-onprem-combopurifier
-    serviceAccount: spark-operator
+    serviceAccount: spark-operator-spark
     labels:
       version: "3.5.3"
   executor:

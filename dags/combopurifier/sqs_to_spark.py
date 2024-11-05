@@ -105,7 +105,7 @@ def init():
 
     combopurifier_spark = SparkKubernetesOperator(
         task_id='combopurifier_spark',
-        namespace='processing',
+        namespace='spark-jobs',
         application_file='./spark/combopurifier_spark.yaml',  # Path to your SparkApplication YAML
         kubernetes_conn_id='kubernetes_in_cluster',
         do_xcom_push=True,
@@ -120,7 +120,7 @@ def init():
     # Spark Kubernetes Sensor Task
     monitor_users = SparkKubernetesSensor(
         task_id='monitor_users',
-        namespace='processing',
+        namespace='spark-jobs',
         application_name="{{ task_instance.xcom_pull(task_ids='combopurifier_spark')['metadata']['name'] }}",
         kubernetes_conn_id='kubernetes_in_cluster',
     )
