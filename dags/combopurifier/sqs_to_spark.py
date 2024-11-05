@@ -110,10 +110,8 @@ def init():
         application_file='combopurifier_spark.yaml',  # Path to your SparkApplication YAML
         kubernetes_conn_id='kubernetes_in_cluster',
         do_xcom_push=True,
-        file_input_key="""{{ ti.xcom_pull(task_ids='parse_sqs_input_filepath',
-                                                        key='return_value') }}""",
-        id="""{{ ti.xcom_pull(task_ids='generate_unique_id',
-                                                        key='return_value') }}""",
+        file_input_key="{{ ti.xcom_pull(task_ids='parse_sqs_input_filepath',key='return_value') }}",
+        id="{{ ti.xcom_pull(task_ids='generate_unique_id',key='return_value') }}"
         # Pass additional arguments if necessary
         # For example, you can add extra environment variables or configurations here
     )
