@@ -53,7 +53,7 @@ spec:
   executor:
     cores: 1
     instances: 2
-    memory: "1024"
+    memory: "1024m"
     envFrom:
       - secretRef:
           name: s3-onprem-combopurifier
