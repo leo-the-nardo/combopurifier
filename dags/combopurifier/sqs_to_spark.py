@@ -110,8 +110,8 @@ def init():
         kubernetes_conn_id='kubernetes_in_cluster',
         do_xcom_push=True,
         params={
-            'file_input_key': "{{ ti.xcom_pull(task_ids='parse_sqs_input_filepath') }}",
-            'id': "{{ ti.xcom_pull(task_ids='generate_unique_id') }}"
+            'file_input_key': "{{ task_instance.xcom_pull(task_ids='parse_sqs_input_filepath') }}",
+            'id': "{{ task_instance.xcom_pull(task_ids='generate_unique_id') }}"
         },
         # Pass additional arguments if necessary
         # For example, you can add extra environment variables or configurations here

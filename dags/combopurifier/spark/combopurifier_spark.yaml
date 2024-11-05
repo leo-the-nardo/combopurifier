@@ -9,8 +9,6 @@ spec:
     - source_bucket=s3a://landing/{{ params.file_input_key }}
     - target_bucket=s3a://lakehouse/bronze/combos/job-combopurifier-{{ params.id }}
     - master_bucket=s3a://lakehouse/silver/combos/master
-#    - source_bucket=s3a://spok-landing/users/*
-#    - target_bucket=s3a://spok-lakehouse/bronze/combos/
   sparkConf:
     spark.hadoop.fs.s3a.impl: "org.apache.hadoop.fs.s3a.S3AFileSystem"
     spark.sql.extensions: "io.delta.sql.DeltaSparkSessionExtension"

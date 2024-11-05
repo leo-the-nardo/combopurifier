@@ -1,4 +1,5 @@
 from spark_session import execute_spark
+import logging
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import (
     regexp_replace,
@@ -9,6 +10,7 @@ from pyspark.sql.functions import (
 )
 def spark_job(spark: SparkSession, params, *args, **kwargs):
     s3_input_combo_path = params.get("source_bucket")
+    logging.info(f"S3 Input Combo Path: {s3_input_combo_path}")
     s3_output_combo_path = params.get("target_bucket")
     s3_master_combo_path = params.get("master_bucket")
 
