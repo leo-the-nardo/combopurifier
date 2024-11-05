@@ -1,6 +1,5 @@
 from spark_session import execute_spark
 from pyspark.sql import SparkSession
-from delta.tables import DeltaTable
 from pyspark.sql.functions import (
     regexp_replace,
     split,
@@ -43,12 +42,11 @@ def spark_job(spark: SparkSession, params, *args, **kwargs):
         .distinct()
 
     # 5. Load Master Data
-    if DeltaTable.isDeltaTable(spark, s3_master_combo_path):
+    try:
         df_master = spark.read.format("delta").load(s3_master_combo_path)
-    else:
-        # Create an empty DataFrame with the same schema as master_data
+    except:
+        # If master data doesn't exist, create an empty DataFrame
         df_master = spark.createDataFrame([], "email_password STRING")
-
     # 6. Identify New Records (Left Anti-Join)
     df_new_data = df_extracted.join(df_master, on='email_password', how='left_anti')
 
@@ -61,22 +59,14 @@ def spark_job(spark: SparkSession, params, *args, **kwargs):
         .text(s3_output_combo_path)
 
     # 10. Update Master Delta Table
-    if DeltaTable.isDeltaTable(spark, s3_master_combo_path):
-        delta_table = DeltaTable.forPath(spark, s3_master_combo_path)
-        delta_table.alias("m") \
-            .merge(
-            df_new_data.alias("n"),
-            "m.email_password = n.email_password"
-        ) \
-            .whenNotMatchedInsertAll() \
-            .execute()
-    else:
-        # Initialize the Delta table with new data
-        df_new_data.write \
-            .format("delta") \
-            .mode("overwrite") \
-            .save(s3_master_combo_path)
+    # 5. Append New Records to Master Data
+    df_combined_master = df_master.unionByName(df_new_data)
 
+    # 6. Write Updated Master Data
+    df_combined_master.write \
+        .format("delta") \
+        .mode("overwrite") \
+        .save(s3_master_combo_path)
     # 11. Finalization
     # Unpersist the cached DataFrame to free up memory
     df_new_data.unpersist()
