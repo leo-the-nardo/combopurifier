@@ -30,7 +30,8 @@ SQS_QUEUE_URL = 'https://sqs.us-east-2.amazonaws.com/068064050187/input-notifica
     start_date=datetime(2024, 4, 1),
     catchup=False,
     tags=['combopurifier', 'sqs', 'webhook', 'spark', 'minio', 'kubernetes', 's3'],
-    max_active_runs=1
+    max_active_runs=1,
+    template_searchpath=['./spark']
 )
 def init():
     start = EmptyOperator(task_id="start")
@@ -107,7 +108,7 @@ def init():
     combopurifier_spark = SparkKubernetesOperator(
         task_id='combopurifier_spark',
         namespace='spark-jobs',
-        application_file='./spark/combopurifier_spark.yaml',  # Path to your SparkApplication YAML
+        application_file='combopurifier_spark.yaml',  # Path to your SparkApplication YAML
         kubernetes_conn_id='kubernetes_in_cluster',
         do_xcom_push=True,
         params={
