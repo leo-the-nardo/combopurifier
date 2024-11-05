@@ -1,5 +1,5 @@
 from urllib.parse import unquote
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from airflow.decorators import task,dag
 from airflow.providers.amazon.aws.sensors.sqs import SqsSensor
 from airflow.operators.empty import EmptyOperator
@@ -87,18 +87,19 @@ def init():
     @task
     def generate_unique_id(file_input_key, **context):
         """
-        Generate a unique ID using DAG ID, current datetime, and file_input_key without replacing characters.
+        Generate a unique ID using DAG ID, current datetime, and sanitized file_input_key.
         """
         if not file_input_key:
             raise ValueError("file_input_key is None or empty.")
 
         dag_id = context['dag'].dag_id
-        current_time = datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
-        # Directly use file_input_key without sanitization
-        unique_id = f"{dag_id}-{current_time}-{file_input_key}"
+        # Use timezone-aware datetime in UTC
+        current_time = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+        # Replace "/" and "." in file_input_key with "_"
+        sanitized_file_input_key = file_input_key.replace("/", "_").replace(".", "_")
+        unique_id = f"{dag_id}-{current_time}-{sanitized_file_input_key}"
         print(f"Generated unique id: {unique_id}")
         return unique_id
-
     parse_task = parse_sqs_input_filepath()
 
     generate_id_task = generate_unique_id(parse_task)
@@ -110,8 +111,12 @@ def init():
         kubernetes_conn_id='kubernetes_in_cluster',
         do_xcom_push=True,
         params={
-            'file_input_key': "{{ task_instance.xcom_pull(task_ids='parse_sqs_input_filepath') }}",
-            'id': "{{ task_instance.xcom_pull(task_ids='generate_unique_id') }}"
+            "file_input_key": """{{ ti.xcom_pull(task_ids='parse_sqs_input_filepath',
+                                                        key='return_value') }}""",
+
+            "id": """{{ ti.xcom_pull(task_ids='generate_unique_id',
+                                                        key='return_value') }}""",
+
         },
         # Pass additional arguments if necessary
         # For example, you can add extra environment variables or configurations here
