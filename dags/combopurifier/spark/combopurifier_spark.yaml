@@ -19,13 +19,11 @@ spec:
     spark.hadoop.fs.s3a.fast.upload: "True"
     spark.hadoop.fs.s3a.multipart.size: "104857600"
     spark.hadoop.fs.s3a.connection.maximum: "100"
-    fs.s3a.endpoint: "http://minio.minio-dev.svc.cluster.local:9000"
+    spark.hadoop.fs.s3a.endpoint: "http://minio.minio-dev.svc.cluster.local:9000"
     com.amazonaws.sdk.disableCertChecking: "False"
-    fs.s3a.connection.ssl.strictverify: "False"
-    fs.s3a.connection.ssl.enabled: "False"
-    fs.s3a.ssl.enabled: "False"
-    spark.hadoop.fs.s3a.ssl.enabled: "False"
+    spark.hadoop.fs.s3a.connection.ssl.strictverify: "False"
     spark.hadoop.fs.s3a.connection.ssl.enabled: "False"
+    spark.hadoop.fs.s3a.ssl.enabled: "False"
   type: Python
   mode: cluster
 #  image: "tiagotxm/owshq:spark-3.2.3-delta"
