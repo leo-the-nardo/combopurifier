@@ -12,6 +12,7 @@ rules:
       - sparkoperator.k8s.io
     resources:
       - sparkapplications
+      - sparkapplications/status
     verbs:
       - '*'
 ---
