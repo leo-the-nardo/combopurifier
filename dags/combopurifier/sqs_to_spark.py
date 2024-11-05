@@ -31,7 +31,7 @@ SQS_QUEUE_URL = 'https://sqs.us-east-2.amazonaws.com/068064050187/input-notifica
     catchup=False,
     tags=['combopurifier', 'sqs', 'webhook', 'spark', 'minio', 'kubernetes', 's3'],
     max_active_runs=1,
-    template_searchpath=['./spark']
+    template_searchpath=['spark']
 )
 def init():
     start = EmptyOperator(task_id="start")
