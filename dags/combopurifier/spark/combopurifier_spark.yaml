@@ -29,7 +29,8 @@ spec:
   type: Python
   mode: cluster
 #  image: "tiagotxm/owshq:spark-3.2.3-delta"
-  image: "leothenardo/spark-py-delta-s3a-combopurifier:3.5.3"
+#  image: "leothenardo/spark-py-delta-s3a-combopurifier:3.5.3"
+  image: "leothenardo/spark-py-s3a-delta-combopurifier:3.5.3"
   imagePullPolicy: IfNotPresent
   mainApplicationFile: "local:///opt/spark/scripts/combopurifier_spark.py"
 #  mainApplicationFile: "s3a://spok-scripts/job-with-parameters.py"
