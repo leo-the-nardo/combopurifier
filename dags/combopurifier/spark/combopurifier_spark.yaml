@@ -46,9 +46,9 @@ spec:
     envFrom:
       - secretRef:
           name: s3-onprem-combopurifier
-    serviceAccount: spark-operator-spark
+    serviceAccount: spark-operator
     labels:
-      version: 3.5.3
+      version: "3.5.3"
   executor:
     cores: 1
     instances: 2
@@ -57,4 +57,4 @@ spec:
       - secretRef:
           name: s3-onprem-combopurifier
     labels:
-      version: 3.5.3
+      version: "3.5.3"
