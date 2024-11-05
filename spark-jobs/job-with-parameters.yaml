@@ -6,8 +6,9 @@ metadata:
 spec:
   arguments:
     - job_name=teste-param
-    - source_bucket=s3a://spok-landing/users/*
-    - target_bucket=s3a://spok-lakehouse/bronze/users
+#    - source_bucket=s3a://spok-landing/users/*
+#    - sync_bucket=
+#    - target_bucket=s3a://spok-lakehouse/bronze/users
   deps:
     pyFiles:
       - local:///opt/spark/work-dir/spark_session.py

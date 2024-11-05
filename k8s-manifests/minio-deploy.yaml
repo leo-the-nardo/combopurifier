@@ -49,19 +49,21 @@ spec:
       name: port0
 ---
 #Expose to Kong Gateway ----------------------
+# HTTPRoute for MinIO UI
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
-  name: minio
+  name: minio-ui
   namespace: gateway
   annotations:
     konghq.com/strip-path: "true"
+    konghq.com/preserve-host: "true"
 spec:
   parentRefs:
     - name: kong
       namespace: gateway
   hostnames:
-    - minio.cloudificando.corp
+    - minio.cloudificando.corp  # Hostname for UI
   rules:
     - matches:
         - path:
@@ -69,9 +71,37 @@ spec:
             value: /
       backendRefs:
         - name: minio
-          port: 9001
+          port: 9001  # UI port
           kind: Service
           namespace: minio-dev
+
+---
+# HTTPRoute for MinIO API
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: minio-api
+  namespace: gateway
+  annotations:
+    konghq.com/strip-path: "true"
+    konghq.com/preserve-host: "true"
+spec:
+  parentRefs:
+    - name: kong
+      namespace: gateway
+  hostnames:
+    - minioapi.cloudificando.corp  # Hostname for API
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: minio
+          port: 9000  # API port
+          kind: Service
+          namespace: minio-dev
+
 ---
 apiVersion: gateway.networking.k8s.io/v1beta1
 kind: ReferenceGrant

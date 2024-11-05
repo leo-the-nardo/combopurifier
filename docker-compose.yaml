@@ -1,10 +1,11 @@
 version: '3'
 
 x-spark-common: &spark-common
-  image: bitnami/spark:latest
+  image: spark-with-delta # Use the custom image
   volumes:
     - ./jobs:/opt/bitnami/spark/jobs
-
+    # - ./delta-lake-jars:/opt/bitnami/spark/jars # Mount Delta Lake JARs
+    - ./delta-lake-jars:/opt/bitnami/spark/delta-jars # Mount Delta Lake JARs to a separate folder
 x-airflow-common: &airflow-common
   build:
     context: .
@@ -40,7 +41,9 @@ services:
     ports:
       - "9090:8080"
       - "7077:7077"
-
+    environment:
+      # SPARK_EXTRA_CLASSPATH: /opt/bitnami/spark/jars/*
+      SPARK_EXTRA_CLASSPATH: /opt/bitnami/spark/delta-jars/* # Include Delta Lake JARs from the separate folder
   spark-worker:
     <<: *spark-common
     command: bin/spark-class org.apache.spark.deploy.worker.Worker spark://spark-master:7077
@@ -51,7 +54,8 @@ services:
       SPARK_WORKER_CORES: 2
       SPARK_WORKER_MEMORY: 1g
       SPARK_MASTER_URL: spark://spark-master:7077
-
+      SPARK_EXTRA_CLASSPATH: /opt/bitnami/spark/delta-jars/*
+      # SPARK_EXTRA_CLASSPATH: /opt/bitnami/spark/jars/*
   postgres:
     image: postgres:14.0
     environment:

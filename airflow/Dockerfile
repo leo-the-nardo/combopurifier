@@ -8,4 +8,4 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 USER airflow
 ENV JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-RUN pip install apache-airflow apache-airflow-providers-apache-spark pyspark
+RUN pip install apache-airflow apache-airflow-providers-apache-spark pyspark apache-airflow-providers-cncf-kubernetes
