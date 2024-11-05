@@ -39,27 +39,31 @@ subjects:
     name: airflow-triggerer
     namespace: airflow
 ---
+# "system:serviceaccount:airflow:airflow-worker\" cannot list resource \"pods\" in API group \"\" in the namespace \"processing\"","reason":"Forbidden","details":{"kind":"pods"},"code":403}   │
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: Role
 metadata:
-  creationTimestamp: null
-  name: spark-operator-role-new
-  namespace: default
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: edit
+  namespace: processing
+  name: pod-reader
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: read-pods
+  namespace: processing
 subjects:
   - kind: ServiceAccount
-    name: sparkoperator
-    namespace: default
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  creationTimestamp: null
-  name: sparkoperator
-  namespace: default
+    name: airflow-worker
+    namespace: airflow
+roleRef:
+  kind: Role
+  name: pod-reader
+  apiGroup: rbac.authorization.k8s.io
+
 # #helm repo add apache-airflow https://airflow.apache.org
 # #helm repo update
 # # airflow-rbac.yaml
