@@ -1,3 +1,4 @@
+import os
 from urllib.parse import unquote
 from datetime import datetime, timedelta, timezone
 from airflow.decorators import task,dag
@@ -20,7 +21,8 @@ default_args = {
 
 SQS_CONNECTION_ID = 'sqs-connection-combopretifier'  # Ensure this matches your Airflow connection
 SQS_QUEUE_URL = 'https://sqs.us-east-2.amazonaws.com/068064050187/input-notification'  # Replace with your SQS queue URL
-
+dag_folder = os.environ.get('AIRFLOW_HOME', '/opt/airflow')  # Adjust if AIRFLOW_HOME is different
+spark_templates_path = os.path.join(dag_folder, 'dags', 'spark')  # Assuming 'spark' is directly under 'dags/'
 # Define the DAG
 @dag(
     dag_id='sqs_s3_to_spark',
@@ -31,7 +33,7 @@ SQS_QUEUE_URL = 'https://sqs.us-east-2.amazonaws.com/068064050187/input-notifica
     catchup=False,
     tags=['combopurifier', 'sqs', 'webhook', 'spark', 'minio', 'kubernetes', 's3'],
     max_active_runs=1,
-    template_searchpath=['spark']
+    template_searchpath=[spark_templates_path]
 )
 def init():
     start = EmptyOperator(task_id="start")
