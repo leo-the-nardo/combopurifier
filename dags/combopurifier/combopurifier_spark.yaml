@@ -1,9 +1,14 @@
 apiVersion: "sparkoperator.k8s.io/v1beta2"
 kind: SparkApplication
 metadata:
-  name: combopurifier-job
+  name: job-with-parameters
   namespace: spark-jobs
 spec:
+  arguments:
+    - job_name=combopurifier-job
+    - source_bucket=s3a://landing/{{ file_input_key }}
+    - target_bucket=s3a://lakehouse/bronze/combos/job-combopurifier-{{ id }}
+    - master_bucket=s3a://lakehouse/silver/combos/master
   sparkConf:
     spark.hadoop.fs.s3a.impl: "org.apache.hadoop.fs.s3a.S3AFileSystem"
     spark.sql.extensions: "io.delta.sql.DeltaSparkSessionExtension"
@@ -19,16 +24,18 @@ spec:
     spark.hadoop.fs.s3a.ssl.enabled: "False"
   type: Python
   mode: cluster
+#  image: "tiagotxm/owshq:spark-3.2.3-delta"
+#  image: "leothenardo/spark-py-delta-s3a-combopurifier:3.5.3"
   image: "leothenardo/spark-combopurifier:1.0.1"
   imagePullPolicy: IfNotPresent
   mainApplicationFile: "local:///opt/spark/scripts/combopurifier_spark.py"
+#  mainApplicationFile: "s3a://spok-scripts/job-with-parameters.py"
   sparkVersion: "3.5.3"
   restartPolicy:
     type: Never
   deps:
     pyFiles:
       - local:///opt/spark/scripts/spark_session.py
-  arguments: []  # No command-line arguments defined here
   driver:
     cores: 1
     coreLimit: "1200m"
@@ -39,16 +46,6 @@ spec:
     serviceAccount: spark-operator-spark
     labels:
       version: "3.5.3"
-    env:
-      - name: SPARK_JOB_NAME
-        value: "combopurifier-job"
-      - name: SPARK_MASTER_BUCKET
-        value: "s3a://lakehouse/silver/combos/master"
-      # The following environment variables will be overridden by the operator's env_vars
-      - name: SPARK_SOURCE_BUCKET
-        value: "s3a://landing/default_input_key"  # Placeholder
-      - name: SPARK_TARGET_BUCKET
-        value: "s3a://lakehouse/bronze/combos/job-combopurifier-default_id"  # Placeholder
   executor:
     cores: 1
     instances: 2
@@ -58,13 +55,3 @@ spec:
           name: s3-onprem-combopurifier
     labels:
       version: "3.5.3"
-    env:
-      - name: SPARK_JOB_NAME
-        value: "combopurifier-job"
-      - name: SPARK_MASTER_BUCKET
-        value: "s3a://lakehouse/silver/combos/master"
-      # The following environment variables will be overridden by the operator's env_vars
-      - name: SPARK_SOURCE_BUCKET
-        value: "s3a://landing/default_input_key"  # Placeholder
-      - name: SPARK_TARGET_BUCKET
-        value: "s3a://lakehouse/bronze/combos/job-combopurifier-default_id"  # Placeholder

@@ -1,4 +1,6 @@
 import os
+import jinja2
+import yaml
 from urllib.parse import unquote
 from datetime import datetime, timedelta, timezone
 from airflow.decorators import task,dag
@@ -21,6 +23,7 @@ default_args = {
 
 SQS_CONNECTION_ID = 'sqs-connection-combopretifier'  # Ensure this matches your Airflow connection
 SQS_QUEUE_URL = 'https://sqs.us-east-2.amazonaws.com/068064050187/input-notification'  # Replace with your SQS queue URL
+TEMPLATE_PATH = "./combopurifier_spark.yaml"
 # Define the DAG
 @dag(
     dag_id='sqs_s3_to_spark',
@@ -104,19 +107,43 @@ def init():
 
     generate_id_task = generate_unique_id(parse_task)
 
+    @task
+    def render_template_spec(file_input_key, unique_id, **context):
+        """
+        Renders the SparkApplication spec using the Jinja template and returns it as a dictionary.
+        """
+        if not file_input_key or not unique_id:
+            raise ValueError("file_input_key or unique_id is missing.")
+
+        # Load the Jinja template
+        with open(TEMPLATE_PATH, 'r') as file:
+            template_content = file.read()
+
+        template = jinja2.Template(template_content)
+        rendered_yaml = template.render(file_input_key=file_input_key, id=unique_id)
+        print(f"Rendered SparkApplication YAML:\n{rendered_yaml}")
+
+        # Convert YAML to Python dictionary
+        spark_app_spec = yaml.safe_load(rendered_yaml)
+        return spark_app_spec
+
+    render_spec_task = render_template_spec(generate_id_task, generate_id_task)
+
     combopurifier_spark = SparkKubernetesOperator(
         task_id='combopurifier_spark',
         namespace='spark-jobs',
-        application_file='combopurifier_spark.yaml',  # Path to your SparkApplication YAML
+        # application_file='combopurifier_spark.yaml',  # Path to your SparkApplication YAML
+        template_spec="{{ task_instance.xcom_pull(task_ids='render_template_spec') }}",
         kubernetes_conn_id='kubernetes_in_cluster',
         do_xcom_push=True,
-        env_vars={
-            'SPARK_SOURCE_BUCKET': "s3a://landing/{{ ti.xcom_pull(task_ids='parse_sqs_input_filepath', key='return_value') }}",
-            'SPARK_TARGET_BUCKET': "s3a://lakehouse/bronze/combos/job-combopurifier-{{ ti.xcom_pull(task_ids='generate_unique_id', key='return_value') }}",
-            # Static variables are already set in YAML; no need to override unless desired
-            # 'SPARK_JOB_NAME': 'combopurifier-job',  # Already set in YAML
-            # 'SPARK_MASTER_BUCKET': 's3a://lakehouse/silver/combos/master'  # Already set in YAML
-        },
+        # env_from={
+        #     'SPARK_SOURCE_BUCKET': "s3a://landing/{{ ti.xcom_pull(task_ids='parse_sqs_input_filepath', key='return_value') }}",
+        #     'SPARK_TARGET_BUCKET': "s3a://lakehouse/bronze/combos/job-combopurifier-{{ ti.xcom_pull(task_ids='generate_unique_id', key='return_value') }}",
+        #     # Static variables are already set in YAML; no need to override unless desired
+        #     # 'SPARK_JOB_NAME': 'combopurifier-job',  # Already set in YAML
+        #     # 'SPARK_MASTER_BUCKET': 's3a://lakehouse/silver/combos/master'  # Already set in YAML
+        # },
+        # env_vars=
         # Pass additional arguments if necessary
         # For example, you can add extra environment variables or configurations here
     )
@@ -133,5 +160,5 @@ def init():
     end = EmptyOperator(task_id="end")
 
     # Define task dependencies
-    start >> wait_for_sqs_message >> parse_task >> generate_id_task >> combopurifier_spark >> monitor_users >> end
+    start >> wait_for_sqs_message >> parse_task >> generate_id_task >> render_spec_task >> combopurifier_spark >> end
 dag = init()
