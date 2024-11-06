@@ -124,11 +124,10 @@ def init():
         message_attributes={},  # Add any necessary message attributes here
         delay_seconds=0,
         message_group_id=None,  # Set if using FIFO queues
-        trigger_rule=TriggerRule.ONE_FAILED,
     )
 
     # Define task dependencies
     start >> wait_for_sqs_message >> process_task >> combopurifier_spark >> end
-    end >> failure_payload >> send_to_dlq
+    failure_payload >> send_to_dlq
 
 dag = init()
