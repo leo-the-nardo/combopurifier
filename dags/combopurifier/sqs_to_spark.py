@@ -102,7 +102,7 @@ def init():
         deferrable=True,
     )
 
-    process_task = render_template()
+    render_yaml = render_template()
 
     combopurifier_spark = SparkKubernetesOperator(
         task_id='combopurifier_spark',
@@ -127,7 +127,7 @@ def init():
     )
 
     # Define task dependencies
-    start >> wait_for_sqs_message >> process_task >> combopurifier_spark >> end
-    failure_payload >> send_to_dlq
+    start >> wait_for_sqs_message >> render_yaml >> combopurifier_spark >> end
+    [wait_for_sqs_message, render_yaml, combopurifier_spark] >> failure_payload >> send_to_dlq
 
 dag = init()
