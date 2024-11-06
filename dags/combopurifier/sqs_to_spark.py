@@ -138,7 +138,7 @@ def init():
         # application_file='combopurifier_spark.yaml',  # Path to your SparkApplication YAML
         template_spec="{{ task_instance.xcom_pull(task_ids='render_template_spec') }}",
         kubernetes_conn_id='kubernetes_in_cluster',
-        do_xcom_push=True,
+        do_xcom_push=False,
         # env_from={
         #     'SPARK_SOURCE_BUCKET': "s3a://landing/{{ ti.xcom_pull(task_ids='parse_sqs_input_filepath', key='return_value') }}",
         #     'SPARK_TARGET_BUCKET': "s3a://lakehouse/bronze/combos/job-combopurifier-{{ ti.xcom_pull(task_ids='generate_unique_id', key='return_value') }}",
