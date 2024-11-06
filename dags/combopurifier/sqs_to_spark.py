@@ -110,12 +110,13 @@ def init():
         application_file='combopurifier_spark.yaml',  # Path to your SparkApplication YAML
         kubernetes_conn_id='kubernetes_in_cluster',
         do_xcom_push=True,
-        arguments=[
-            "--file-input-key", "{{ ti.xcom_pull(task_ids='parse_sqs_input_filepath', key='return_value') }}",
-            "--id", "{{ ti.xcom_pull(task_ids='generate_unique_id', key='return_value') }}"
-            "--job-name", "combopurifier-job",
-            "--master-bucket", "s3a://lakehouse/silver/combos/master"
-        ],
+        env_vars={
+            'SPARK_FILE_INPUT_KEY': "{{ ti.xcom_pull(task_ids='parse_sqs_input_filepath', key='return_value') }}",
+            'SPARK_UNIQUE_ID': "{{ ti.xcom_pull(task_ids='generate_unique_id', key='return_value') }}",
+            # Static variables can be directly assigned if needed
+            # 'SPARK_JOB_NAME': 'combopurifier-job',  # Already set in YAML, can omit or override here
+            # 'SPARK_MASTER_BUCKET': 's3a://lakehouse/silver/combos/master'  # Already set in YAML, can omit or override
+        },
         # Pass additional arguments if necessary
         # For example, you can add extra environment variables or configurations here
     )

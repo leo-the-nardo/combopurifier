@@ -1,7 +1,7 @@
 apiVersion: "sparkoperator.k8s.io/v1beta2"
 kind: SparkApplication
 metadata:
-  name: job-with-parameters
+  name: combopurifier-job
   namespace: spark-jobs
 spec:
   sparkConf:
@@ -19,12 +19,9 @@ spec:
     spark.hadoop.fs.s3a.ssl.enabled: "False"
   type: Python
   mode: cluster
-#  image: "tiagotxm/owshq:spark-3.2.3-delta"
-#  image: "leothenardo/spark-py-delta-s3a-combopurifier:3.5.3"
   image: "leothenardo/spark-combopurifier:1.0.0"
   imagePullPolicy: IfNotPresent
   mainApplicationFile: "local:///opt/spark/scripts/combopurifier_spark.py"
-#  mainApplicationFile: "s3a://spok-scripts/job-with-parameters.py"
   sparkVersion: "3.5.3"
   restartPolicy:
     type: Never
@@ -41,6 +38,15 @@ spec:
     serviceAccount: spark-operator-spark
     labels:
       version: "3.5.3"
+    env:
+      - name: SPARK_FILE_INPUT_KEY
+        value: "{{ env['SPARK_FILE_INPUT_KEY'] }}"
+      - name: SPARK_UNIQUE_ID
+        value: "{{ env['SPARK_UNIQUE_ID'] }}"
+      - name: SPARK_JOB_NAME
+        value: "combopurifier-job"
+      - name: SPARK_MASTER_BUCKET
+        value: "s3a://lakehouse/silver/combos/master"
   executor:
     cores: 1
     instances: 2
@@ -50,3 +56,12 @@ spec:
           name: s3-onprem-combopurifier
     labels:
       version: "3.5.3"
+    env:
+      - name: SPARK_FILE_INPUT_KEY
+        value: "{{ env['SPARK_FILE_INPUT_KEY'] }}"
+      - name: SPARK_UNIQUE_ID
+        value: "{{ env['SPARK_UNIQUE_ID'] }}"
+      - name: SPARK_JOB_NAME
+        value: "combopurifier-job"
+      - name: SPARK_MASTER_BUCKET
+        value: "s3a://lakehouse/silver/combos/master"
