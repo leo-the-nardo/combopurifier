@@ -23,7 +23,7 @@ default_args = {
 
 SQS_CONNECTION_ID = 'sqs-connection-combopretifier'  # Ensure this matches your Airflow connection
 SQS_QUEUE_URL = 'https://sqs.us-east-2.amazonaws.com/068064050187/input-notification'  # Replace with your SQS queue URL
-TEMPLATE_PATH = "./combopurifier_spark.yaml"
+TEMPLATE_PATH = "/opt/airflow/dags/combopurifier/combopurifier_spark.yaml"
 # Define the DAG
 @dag(
     dag_id='sqs_s3_to_spark',
