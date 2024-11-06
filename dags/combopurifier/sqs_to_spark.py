@@ -76,6 +76,8 @@ def init():
             for ti in task_instances if ti.state == 'failed'
         ]
         original_messages = context['ti'].xcom_pull(task_ids='wait_for_sqs_message', key='messages') or []
+        print("messages:",original_messages)
+        print("context: ",context)
         message_payload = {
             'dag_id': dag_id,
             'execution_date': execution_date,
@@ -83,7 +85,7 @@ def init():
             'sqs_messages': original_messages,
             'timestamp': datetime.now(timezone.utc).isoformat(),
         }
-        return json.dumps(message_payload)
+        return message_payload
 
     start = EmptyOperator(task_id="start")
 
@@ -120,7 +122,7 @@ def init():
         task_id='send_to_dlq',
         aws_conn_id=SQS_PUBLISHER_CONNECTION_ID,
         sqs_queue=SQS_DLQ_QUEUE_URL,
-        message_content="{{ task_instance.xcom_pull(task_ids='render_dlq_payload') }}",
+        message_content="{{ task_instance.xcom_pull(task_ids='render_dlq_payload') | tojson }}",
         message_attributes={},  # Add any necessary message attributes here
         delay_seconds=0,
         message_group_id=None,  # Set if using FIFO queues
