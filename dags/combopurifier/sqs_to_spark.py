@@ -4,9 +4,11 @@ from urllib.parse import unquote
 from datetime import datetime, timedelta, timezone
 from airflow.decorators import task,dag
 from airflow.providers.amazon.aws.sensors.sqs import SqsSensor
+from airflow.providers.amazon.aws.operators.sqs import SqsPublishOperator
 from airflow.operators.empty import EmptyOperator
 import json
 from airflow.providers.cncf.kubernetes.operators.spark_kubernetes import SparkKubernetesOperator
+from airflow.utils.trigger_rule import TriggerRule
 
 # Default arguments for the DAG
 default_args = {
@@ -21,6 +23,7 @@ default_args = {
 
 SQS_CONNECTION_ID = 'sqs-connection-combopretifier'  # Ensure this matches your Airflow connection
 SQS_QUEUE_URL = 'https://sqs.us-east-2.amazonaws.com/068064050187/input-notification'  # Replace with your SQS queue URL
+SQS_DLQ_QUEUE_URL = 'https://sqs.us-east-2.amazonaws.com/068064050187/input-notification-dlq'  # Replace with your DLQ SQS queue URL
 TEMPLATE_PATH = "/opt/airflow/dags/repo/spark-jobs/combopurifier/combopurifier_spark.yaml"
 # Define the DAG
 @dag(
@@ -138,8 +141,75 @@ def init():
         do_xcom_push=False,
     )
 
-    end = EmptyOperator(task_id="end")
+    end = EmptyOperator(
+        task_id="end",
+        trigger_rule=TriggerRule.ALL_DONE
+    )
+
+    @task(trigger_rule=TriggerRule.ONE_FAILED)
+    def prepare_dlq_payload(**context):
+        """
+        Prepares the DLQ message payload containing failure details and original SQS messages.
+        """
+        # Extract DAG run information
+        dag_id = context['dag'].dag_id
+        execution_date = context['execution_date'].isoformat()
+
+        # Retrieve all task instances for the DAG run
+        task_instances = context['ti'].get_dagrun().get_task_instances()
+
+        # Collect failed tasks
+        failed_tasks = [
+            {
+                'task_id': ti.task_id,
+                'state': ti.state,
+                'try_number': ti.try_number,
+                'log_url': ti.log_url,
+                'execution_date': ti.execution_date.isoformat(),
+                'start_date': ti.start_date.isoformat() if ti.start_date else None,
+                'end_date': ti.end_date.isoformat() if ti.end_date else None,
+                'duration': ti.duration,
+            }
+            for ti in task_instances if ti.state == 'failed'
+        ]
+
+        if not failed_tasks:
+            print("No failed tasks to send to DLQ.")
+            return None
+
+        # Retrieve the original SQS messages
+        original_messages = context['ti'].xcom_pull(task_ids='wait_for_sqs_message', key='messages')
+        if not original_messages:
+            print("No original SQS messages found to send to DLQ.")
+            original_messages = []
+
+        # Prepare message payload
+        message_payload = {
+            'dag_id': dag_id,
+            'execution_date': execution_date,
+            'failed_tasks': failed_tasks,
+            'sqs_messages': original_messages,
+            'timestamp': datetime.now(timezone.utc).isoformat(),
+        }
+
+        print(f"Prepared DLQ message payload: {message_payload}")
+
+        return json.dumps(message_payload)
+
+    dlq_payload = prepare_dlq_payload()
+
+    send_to_dlq = SqsPublishOperator(
+        task_id='send_to_dlq',
+        aws_conn_id=SQS_CONNECTION_ID,
+        sqs_queue=SQS_DLQ_QUEUE_URL,
+        message_content="{{ task_instance.xcom_pull(task_ids='prepare_dlq_payload') }}",
+        message_attributes={},  # Add any necessary message attributes here
+        delay_seconds=0,        # Adjust delay if needed
+        message_group_id=None,  # Set if using FIFO queues
+        trigger_rule=TriggerRule.ONE_FAILED,
+    )
 
     # Define task dependencies
-    start >> wait_for_sqs_message >> parse_task >> generate_id_task >> render_spec_task >> combopurifier_spark >> monitor_users >> end
+    start >> wait_for_sqs_message >> parse_task >> generate_id_task >> render_spec_task >> combopurifier_spark >> end
+    end >> dlq_payload >> send_to_dlq  # DLQ tasks depend on the 'end' task
 dag = init()
