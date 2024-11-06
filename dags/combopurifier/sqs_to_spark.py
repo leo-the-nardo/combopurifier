@@ -1,4 +1,3 @@
-import os
 import jinja2
 import yaml
 from urllib.parse import unquote
@@ -8,7 +7,6 @@ from airflow.providers.amazon.aws.sensors.sqs import SqsSensor
 from airflow.operators.empty import EmptyOperator
 import json
 from airflow.providers.cncf.kubernetes.operators.spark_kubernetes import SparkKubernetesOperator
-from airflow.providers.cncf.kubernetes.sensors.spark_kubernetes import SparkKubernetesSensor
 
 # Default arguments for the DAG
 default_args = {
@@ -135,7 +133,6 @@ def init():
     combopurifier_spark = SparkKubernetesOperator(
         task_id='combopurifier_spark',
         namespace='spark-jobs',
-        # application_file='combopurifier_spark.yaml',  # Path to your SparkApplication YAML
         template_spec="{{ task_instance.xcom_pull(task_ids='render_template_spec') }}",
         kubernetes_conn_id='kubernetes_in_cluster',
         do_xcom_push=False,
