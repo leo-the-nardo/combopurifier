@@ -111,11 +111,11 @@ def init():
         kubernetes_conn_id='kubernetes_in_cluster',
         do_xcom_push=True,
         env_vars={
-            'SPARK_FILE_INPUT_KEY': "{{ ti.xcom_pull(task_ids='parse_sqs_input_filepath', key='return_value') }}",
-            'SPARK_UNIQUE_ID': "{{ ti.xcom_pull(task_ids='generate_unique_id', key='return_value') }}",
-            # Static variables can be directly assigned if needed
-            # 'SPARK_JOB_NAME': 'combopurifier-job',  # Already set in YAML, can omit or override here
-            # 'SPARK_MASTER_BUCKET': 's3a://lakehouse/silver/combos/master'  # Already set in YAML, can omit or override
+            'SPARK_SOURCE_BUCKET': "s3a://landing/{{ ti.xcom_pull(task_ids='parse_sqs_input_filepath', key='return_value') }}",
+            'SPARK_TARGET_BUCKET': "s3a://lakehouse/bronze/combos/job-combopurifier-{{ ti.xcom_pull(task_ids='generate_unique_id', key='return_value') }}",
+            # Static variables are already set in YAML; no need to override unless desired
+            # 'SPARK_JOB_NAME': 'combopurifier-job',  # Already set in YAML
+            # 'SPARK_MASTER_BUCKET': 's3a://lakehouse/silver/combos/master'  # Already set in YAML
         },
         # Pass additional arguments if necessary
         # For example, you can add extra environment variables or configurations here
