@@ -23,7 +23,7 @@ default_args = {
 
 SQS_CONNECTION_ID = 'sqs-connection-combopretifier'  # Ensure this matches your Airflow connection
 SQS_QUEUE_URL = 'https://sqs.us-east-2.amazonaws.com/068064050187/input-notification'  # Replace with your SQS queue URL
-TEMPLATE_PATH = "/opt/airflow/dags/repo/dags/combopurifier/combopurifier_spark.yaml"
+TEMPLATE_PATH = "/opt/airflow/dags/repo/spark-jobs/combopurifier/combopurifier_spark.yaml"
 # Define the DAG
 @dag(
     dag_id='sqs_s3_to_spark',
@@ -34,6 +34,7 @@ TEMPLATE_PATH = "/opt/airflow/dags/repo/dags/combopurifier/combopurifier_spark.y
     catchup=False,
     tags=['combopurifier', 'sqs', 'webhook', 'spark', 'minio', 'kubernetes', 's3'],
     max_active_runs=1,
+    render_template_as_native_obj=True
 )
 def init():
     start = EmptyOperator(task_id="start")
