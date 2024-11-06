@@ -40,7 +40,7 @@ TEMPLATE_PATH = "/opt/airflow/dags/repo/spark-jobs/combopurifier/combopurifier_s
     catchup=False,
     tags=['combopurifier', 'sqs', 'webhook', 'spark', 'minio', 'kubernetes', 's3'],
     max_active_runs=1,
-    render_template_as_native_obj=True
+    # render_template_as_native_obj=True
 )
 def init():
     @task
@@ -59,8 +59,6 @@ def init():
 
     @task(trigger_rule=TriggerRule.ONE_FAILED)
     def render_dlq_payload(**context):
-        dag_id = context['dag'].dag_id
-        execution_date = context['execution_date'].isoformat()
         task_instances = context['ti'].get_dagrun().get_task_instances()
         failed_tasks = [
             {
@@ -75,14 +73,15 @@ def init():
             }
             for ti in task_instances if ti.state == 'failed'
         ]
-        original_messages = context['ti'].xcom_pull(task_ids='wait_for_sqs_message', key='messages') or []
-        print("messages:",original_messages)
+        # original_messages = context['ti'].xcom_pull(task_ids='wait_for_sqs_message', key='messages') or []
+        # print("messages:",original_messages)
         print("context: ",context)
         message_payload = {
-            'dag_id': dag_id,
-            'execution_date': execution_date,
+            'dag_id': context['dag'].dag_id,
+            'run_id': context['run_id'],
+            'execution_date': context['execution_date'].isoformat(),
             'failed_tasks': failed_tasks,
-            'sqs_messages': original_messages,
+            'original_messages': context['ti'].xcom_pull(task_ids='wait_for_sqs_message', key='messages') or [],
             'timestamp': datetime.now(timezone.utc).isoformat(),
         }
         return message_payload
@@ -109,7 +108,7 @@ def init():
     combopurifier_spark = SparkKubernetesOperator(
         task_id='combopurifier_spark',
         namespace='spark-jobs',
-        template_spec="{{ task_instance.xcom_pull(task_ids='render_template') }}",
+        template_spec="{{ task_instance.xcom_pull(task_ids='render_template') | fromjson }}",
         kubernetes_conn_id='kubernetes_in_cluster',
         do_xcom_push=False,
     )
@@ -122,7 +121,7 @@ def init():
         task_id='send_to_dlq',
         aws_conn_id=SQS_PUBLISHER_CONNECTION_ID,
         sqs_queue=SQS_DLQ_QUEUE_URL,
-        message_content="{{ task_instance.xcom_pull(task_ids='render_dlq_payload') | tojson }}",
+        message_content="{{ task_instance.xcom_pull(task_ids='render_dlq_payload') }}",
         message_attributes={},  # Add any necessary message attributes here
         delay_seconds=0,
         message_group_id=None,  # Set if using FIFO queues
