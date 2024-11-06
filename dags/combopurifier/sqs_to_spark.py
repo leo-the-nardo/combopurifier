@@ -25,7 +25,8 @@ default_args = {
     'retry_delay': timedelta(seconds=5),
 }
 
-SQS_CONNECTION_ID = 'sqs-connection-combopretifier'
+SQS_CONSUMER_CONNECTION_ID = 'sqs-connection-combopretifier'
+SQS_PUBLISHER_CONNECTION_ID = 'sqs-publisher-combopurifier'
 SQS_QUEUE_URL = 'https://sqs.us-east-2.amazonaws.com/068064050187/input-notification'
 SQS_DLQ_QUEUE_URL = 'https://sqs.us-east-2.amazonaws.com/068064050187/input-notification-dlq'
 TEMPLATE_PATH = "/opt/airflow/dags/repo/spark-jobs/combopurifier/combopurifier_spark.yaml"
@@ -57,7 +58,7 @@ def init():
 
 
     @task(trigger_rule=TriggerRule.ONE_FAILED)
-    def send_failure_to_dlq(**context):
+    def render_dlq_payload(**context):
         dag_id = context['dag'].dag_id
         execution_date = context['execution_date'].isoformat()
         task_instances = context['ti'].get_dagrun().get_task_instances()
@@ -88,7 +89,7 @@ def init():
 
     wait_for_sqs_message = SqsSensor(
         task_id='wait_for_sqs_message',
-        aws_conn_id=SQS_CONNECTION_ID,
+        aws_conn_id=SQS_CONSUMER_CONNECTION_ID,
         sqs_queue=SQS_QUEUE_URL,
         max_messages=1,
         num_batches=1,
@@ -106,20 +107,20 @@ def init():
     combopurifier_spark = SparkKubernetesOperator(
         task_id='combopurifier_spark',
         namespace='spark-jobs',
-        template_spec="{{ task_instance.xcom_pull(task_ids='process_sqs_message') }}",
+        template_spec="{{ task_instance.xcom_pull(task_ids='render_template') }}",
         kubernetes_conn_id='kubernetes_in_cluster',
         do_xcom_push=False,
     )
 
     end = EmptyOperator(task_id="end", trigger_rule=TriggerRule.ALL_DONE)
 
-    failure_payload = send_failure_to_dlq()
+    failure_payload = render_dlq_payload()
 
     send_to_dlq = SqsPublishOperator(
         task_id='send_to_dlq',
-        aws_conn_id=SQS_CONNECTION_ID,
+        aws_conn_id=SQS_PUBLISHER_CONNECTION_ID,
         sqs_queue=SQS_DLQ_QUEUE_URL,
-        message_content="{{ task_instance.xcom_pull(task_ids='send_failure_to_dlq') }}",
+        message_content="{{ task_instance.xcom_pull(task_ids='render_dlq_payload') }}",
         message_attributes={},  # Add any necessary message attributes here
         delay_seconds=0,
         message_group_id=None,  # Set if using FIFO queues

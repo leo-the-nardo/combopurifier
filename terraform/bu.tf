@@ -15,45 +15,24 @@ provider "aws" {
   region = "us-east-2"  # Change to your desired AWS region
 }
 
-#############################################
-# Create Primary SQS Queue and DLQ
-#############################################
-
-# Create the Dead Letter Queue (DLQ)
-resource "aws_sqs_queue" "input_notification_dlq" {
-  name = "input-notification-dlq"
-
-  # Optional: Set DLQ-specific configurations here
-}
-
-# Create the Primary SQS Queue with Redrive Policy pointing to the DLQ
+# Create an SQS queue
 resource "aws_sqs_queue" "input_notification" {
   name = "input-notification"
-
-  redrive_policy = jsonencode({
-    deadLetterTargetArn = aws_sqs_queue.input_notification_dlq.arn
-    maxReceiveCount     = 5  # Adjust based on your retry requirements
-  })
 }
 
-# Output the Primary SQS queue URL
+# Output the SQS queue URL
 output "sqs_queue_url" {
   value = aws_sqs_queue.input_notification.id
-}
-
-# Output the DLQ SQS queue URL
-output "sqs_dlq_queue_url" {
-  value = aws_sqs_queue.input_notification_dlq.id
 }
 
 #############################################
 # IAM Policy for Both Publisher and Consumer
 #############################################
 
-# IAM policy with send and receive permissions for both queues
+# IAM policy with both send and receive permissions
 resource "aws_iam_policy" "sqs_access_policy" {
   name        = "sqs-access-policy"
-  description = "Policy to allow sending and receiving messages to/from SQS queues"
+  description = "Policy to allow sending and receiving messages to/from SQS queue"
 
   policy = jsonencode({
     Version = "2012-10-17",
@@ -69,10 +48,7 @@ resource "aws_iam_policy" "sqs_access_policy" {
           "sqs:GetQueueAttributes",
           "sqs:ChangeMessageVisibility"
         ],
-        Resource = [
-          aws_sqs_queue.input_notification.arn,
-          aws_sqs_queue.input_notification_dlq.arn  # Added DLQ ARN
-        ]
+        Resource = aws_sqs_queue.input_notification.arn
       }
     ]
   })
