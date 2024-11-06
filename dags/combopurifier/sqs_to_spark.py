@@ -160,5 +160,5 @@ def init():
     end = EmptyOperator(task_id="end")
 
     # Define task dependencies
-    start >> wait_for_sqs_message >> parse_task >> generate_id_task >> render_spec_task >> combopurifier_spark >> end
+    start >> wait_for_sqs_message >> parse_task >> generate_id_task >> render_spec_task >> combopurifier_spark >> monitor_users >> end
 dag = init()
