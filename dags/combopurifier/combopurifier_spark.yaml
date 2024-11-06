@@ -39,14 +39,11 @@ spec:
     labels:
       version: "3.5.3"
     env:
-      - name: SPARK_FILE_INPUT_KEY
-        value: "{{ env['SPARK_FILE_INPUT_KEY'] }}"
-      - name: SPARK_UNIQUE_ID
-        value: "{{ env['SPARK_UNIQUE_ID'] }}"
       - name: SPARK_JOB_NAME
         value: "combopurifier-job"
       - name: SPARK_MASTER_BUCKET
         value: "s3a://lakehouse/silver/combos/master"
+      # Environment variables will be injected via the operator's env_vars parameter
   executor:
     cores: 1
     instances: 2
@@ -57,11 +54,8 @@ spec:
     labels:
       version: "3.5.3"
     env:
-      - name: SPARK_FILE_INPUT_KEY
-        value: "{{ env['SPARK_FILE_INPUT_KEY'] }}"
-      - name: SPARK_UNIQUE_ID
-        value: "{{ env['SPARK_UNIQUE_ID'] }}"
       - name: SPARK_JOB_NAME
         value: "combopurifier-job"
       - name: SPARK_MASTER_BUCKET
         value: "s3a://lakehouse/silver/combos/master"
+      # Environment variables will be injected via the operator's env_vars parameter
