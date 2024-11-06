@@ -32,7 +32,7 @@ SQS_DLQ_QUEUE_URL = 'https://sqs.us-east-2.amazonaws.com/068064050187/input-noti
 TEMPLATE_PATH = "/opt/airflow/dags/repo/spark-jobs/combopurifier/combopurifier_spark.yaml"
 
 @dag(
-    dag_id='sqs_s3_to_spark',
+    dag_id='combopurifier-dag',
     default_args=default_args,
     description='Retrieve messages from SQS and send to Spark K8s for processing files',
     schedule_interval=timedelta(seconds=35),
