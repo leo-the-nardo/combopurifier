@@ -46,12 +46,8 @@ def init():
     @task
     def render_template(**context):
         messages = context['ti'].xcom_pull(task_ids='wait_for_sqs_message', key='messages') or []
-        message = messages[0]
-        body = json.loads(message['Body'])
-        object_key = unquote(body['Records'][0]['s3']['object']['key'])
-        logger.info(f"Extracted file_input_key: {object_key}")
+        object_key = unquote(json.loads(messages[0]['Body'])['Records'][0]['s3']['object']['key'])
         unique_id = f"{context['dag'].dag_id}-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{object_key.replace('/', '_').replace('.', '_')}"
-        logger.info(f"Generated unique id: {unique_id}")
         with open(TEMPLATE_PATH) as file:
             rendered_yaml = jinja2.Template(file.read()).render(file_input_key=object_key, id=unique_id)
         return yaml.safe_load(rendered_yaml)
