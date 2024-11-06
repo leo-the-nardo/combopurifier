@@ -112,6 +112,8 @@ def init():
         """
         Renders the SparkApplication spec using the Jinja template and returns it as a dictionary.
         """
+        dag_id = context['dag'].dag_id
+
         if not file_input_key or not unique_id:
             raise ValueError("file_input_key or unique_id is missing.")
 
@@ -127,7 +129,7 @@ def init():
         spark_app_spec = yaml.safe_load(rendered_yaml)
         return spark_app_spec
 
-    render_spec_task = render_template_spec(generate_id_task, generate_id_task)
+    render_spec_task = render_template_spec(parse_task, generate_id_task)
 
     combopurifier_spark = SparkKubernetesOperator(
         task_id='combopurifier_spark',
