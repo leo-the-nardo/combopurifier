@@ -99,6 +99,7 @@ def init():
         template_spec="{{ task_instance.xcom_pull(task_ids='render_template') | fromjson }}", # i need this as dict
         kubernetes_conn_id='kubernetes_in_cluster',
         do_xcom_push=False,
+        render_template_as_native_obj=True,
     )
 
     end = EmptyOperator(task_id="end")
