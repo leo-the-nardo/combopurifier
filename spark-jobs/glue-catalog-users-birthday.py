@@ -2,7 +2,7 @@ from pyspark.sql import SparkSession
 
 if __name__ == '__main__':
     spark = SparkSession.builder.appName("elt-addresses-lakehouse-spok").enableHiveSupport().getOrCreate()
-    df_users = spark.table('workshop_db.users')
+    df_users = spark.table('workshop_db.users') # le do glue catalog
 
     print("Quantidade users")
     print(df_users.count())
