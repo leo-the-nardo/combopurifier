@@ -1,7 +1,6 @@
 import jinja2
 import yaml
 import json
-import logging
 from urllib.parse import unquote
 from datetime import datetime, timedelta, timezone
 from airflow.decorators import task, dag
@@ -11,10 +10,6 @@ from airflow.providers.cncf.kubernetes.operators.spark_kubernetes import SparkKu
 from airflow.operators.empty import EmptyOperator
 from airflow.utils.trigger_rule import TriggerRule
 
-# Initialize logger
-logger = logging.getLogger(__name__)
-
-# DAG configuration
 default_args = {
     'owner': 'leonardo@cloudificando.com',
     'depends_on_past': False,
@@ -41,7 +36,6 @@ TEMPLATE_PATH = "/opt/airflow/dags/repo/spark-jobs/combopurifier/combopurifier_s
     tags=['combopurifier', 'sqs', 'webhook', 'spark', 'minio', 'kubernetes', 's3'],
     max_active_runs=1,
     user_defined_filters={'fromjson': lambda s: json.loads(s)},
-    # render_template_as_native_obj=True
 )
 def init():
     @task
@@ -52,7 +46,6 @@ def init():
         with open(TEMPLATE_PATH) as file:
             rendered_yaml = jinja2.Template(file.read()).render(file_input_key=object_key, id=unique_id)
         return yaml.safe_load(rendered_yaml)
-
 
     @task(trigger_rule=TriggerRule.ONE_FAILED)
     def render_dlq_payload(**context):
@@ -67,9 +60,6 @@ def init():
             }
             for ti in task_instances if ti.state == 'failed'
         ]
-        # original_messages = context['ti'].xcom_pull(task_ids='wait_for_sqs_message', key='messages') or []
-        # print("messages:",original_messages)
-        print("context: ",context)
         message_payload = {
             'dag_id': context['dag'].dag_id,
             'run_id': context['run_id'],
@@ -102,7 +92,7 @@ def init():
     combopurifier_spark = SparkKubernetesOperator(
         task_id='combopurifier_spark',
         namespace='spark-jobs',
-        template_spec="{{ task_instance.xcom_pull(task_ids='render_template') | fromjson }}",
+        template_spec="{{ task_instance.xcom_pull(task_ids='render_template') }}",
         kubernetes_conn_id='kubernetes_in_cluster',
         do_xcom_push=False,
     )
@@ -116,12 +106,11 @@ def init():
         aws_conn_id=SQS_PUBLISHER_CONNECTION_ID,
         sqs_queue=SQS_DLQ_QUEUE_URL,
         message_content="{{ task_instance.xcom_pull(task_ids='render_dlq_payload') }}",
-        message_attributes={},  # Add any necessary message attributes here
+        message_attributes={},
         delay_seconds=0,
-        message_group_id=None,  # Set if using FIFO queues
+        message_group_id=None,
     )
 
-    # Define task dependencies
     start >> wait_for_sqs_message >> render_yaml >> combopurifier_spark >> end
     [wait_for_sqs_message, render_yaml, combopurifier_spark] >> failure_payload >> send_to_dlq
 
