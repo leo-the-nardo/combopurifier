@@ -27,20 +27,20 @@ def spark_job(spark: SparkSession, params, *args, **kwargs):
         split(col('replaced'), r'\|\|\|')
     ) \
         .withColumn(
-        'email_password',
+        'email_tel',
         explode(col('splitted'))
     ) \
-        .select('email_password') \
+        .select('email_tel') \
         .filter(
-        (col('email_password') != '') &
-        (col('email_password').rlike(r'^\S+@\S+:\S+$'))
+        (col('email_tel') != '') &
+        (col('email_tel').rlike(r'^\S+@\S+:\S+$'))
     ) \
         .distinct()
     try:
         df_master = spark.read.format("delta").load(s3_master_combo_path)
     except:
-        df_master = spark.createDataFrame([], "email_password STRING")
-    df_new_data = df_extracted.join(df_master, on='email_password', how='left_anti')
+        df_master = spark.createDataFrame([], "email_tel STRING")
+    df_new_data = df_extracted.join(df_master, on='email_tel', how='left_anti')
 
     df_new_data = df_new_data.repartition(1).cache()
 
