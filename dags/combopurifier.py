@@ -39,7 +39,7 @@ TEMPLATE_PATH = "/opt/airflow/dags/repo/spark-jobs/combopurifier/combopurifier_s
         'fromjson': lambda s: json.loads(s),
         'tojson': lambda x: json.dumps(x)
     },
-    render_template_as_native_obj=True
+    #render_template_as_native_obj=True
 )
 def init():
     @task
@@ -49,7 +49,7 @@ def init():
         unique_id = f"{context['dag'].dag_id}-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{object_key.replace('/', '_').replace('.', '_')}"
         with open(TEMPLATE_PATH) as file:
             rendered_yaml = jinja2.Template(file.read()).render(file_input_key=object_key, id=unique_id)
-        return yaml.safe_load(rendered_yaml)
+        return json.dumps(yaml.safe_load(rendered_yaml))
 
     @task(trigger_rule=TriggerRule.ONE_FAILED)
     def render_dlq_payload(**context):
@@ -96,7 +96,7 @@ def init():
     combopurifier_spark = SparkKubernetesOperator(
         task_id='combopurifier_spark',
         namespace='spark-jobs',
-        template_spec="{{ task_instance.xcom_pull(task_ids='render_template') }}", # i need this as dict
+        template_spec="{{ task_instance.xcom_pull(task_ids='render_template') | fromjson }}", # i need this as dict
         kubernetes_conn_id='kubernetes_in_cluster',
         do_xcom_push=False,
     )
