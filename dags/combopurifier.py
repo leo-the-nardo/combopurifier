@@ -39,6 +39,7 @@ TEMPLATE_PATH = "/opt/airflow/dags/repo/spark-jobs/combopurifier/combopurifier_s
         'fromjson': lambda s: json.loads(s),
         'tojson': lambda x: json.dumps(x)
     },
+    render_template_as_native_obj=True
 )
 def init():
     @task
