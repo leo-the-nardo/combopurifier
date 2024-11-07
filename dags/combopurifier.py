@@ -72,7 +72,7 @@ def init():
             'original_messages': context['ti'].xcom_pull(task_ids='wait_for_sqs_message', key='messages') or [],
             'timestamp': datetime.now(timezone.utc).isoformat(),
         }
-        return message_payload
+        return json.dumps(message_payload)
 
     start = EmptyOperator(task_id="start")
 
