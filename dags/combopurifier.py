@@ -40,6 +40,7 @@ TEMPLATE_PATH = "/opt/airflow/dags/repo/spark-jobs/combopurifier/combopurifier_s
     catchup=False,
     tags=['combopurifier', 'sqs', 'webhook', 'spark', 'minio', 'kubernetes', 's3'],
     max_active_runs=1,
+    user_defined_filters={'fromjson': lambda s: json.loads(s)},
     # render_template_as_native_obj=True
 )
 def init():
