@@ -75,7 +75,6 @@ def init():
         return json.dumps(message_payload)
 
     start = EmptyOperator(task_id="start")
-
     wait_for_sqs_message = SqsSensor(
         task_id='wait_for_sqs_message',
         aws_conn_id=SQS_CONSUMER_CONNECTION_ID,
@@ -90,26 +89,22 @@ def init():
         delete_message_on_reception=True,
         deferrable=True,
     )
-
     render_yaml = render_template()
-
     combopurifier_spark = SparkKubernetesOperator(
         task_id='combopurifier_spark',
         namespace='spark-jobs',
-        template_spec="{{ task_instance.xcom_pull(task_ids='render_template') | fromjson }}", # i need this as dict
+        template_spec="{{ task_instance.xcom_pull(task_ids='render_template') | fromjson }}",
         kubernetes_conn_id='kubernetes_in_cluster',
         do_xcom_push=False,
     )
-
     end = EmptyOperator(task_id="end")
 
     failure_payload = render_dlq_payload()
-
     send_to_dlq = SqsPublishOperator(
         task_id='send_to_dlq',
         aws_conn_id=SQS_PUBLISHER_CONNECTION_ID,
         sqs_queue=SQS_DLQ_QUEUE_URL,
-        message_content="{{ task_instance.xcom_pull(task_ids='render_dlq_payload') | tojson }}", # i need this as string
+        message_content="{{ task_instance.xcom_pull(task_ids='render_dlq_payload') | tojson }}",
         message_attributes={},
         delay_seconds=0,
         message_group_id=None,
