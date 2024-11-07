@@ -62,9 +62,6 @@ def init():
                 'state': ti.state,
                 'try_number': ti.try_number,
                 'log_url': ti.log_url,
-                'execution_date': ti.execution_date.isoformat(),
-                'start_date': ti.start_date.isoformat() if ti.start_date else None,
-                'end_date': ti.end_date.isoformat() if ti.end_date else None,
                 'duration': ti.duration,
             }
             for ti in task_instances if ti.state == 'failed'
@@ -109,7 +106,7 @@ def init():
         do_xcom_push=False,
     )
 
-    end = EmptyOperator(task_id="end", trigger_rule=TriggerRule.ALL_DONE)
+    end = EmptyOperator(task_id="end")
 
     failure_payload = render_dlq_payload()
 
