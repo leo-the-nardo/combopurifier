@@ -35,7 +35,10 @@ TEMPLATE_PATH = "/opt/airflow/dags/repo/spark-jobs/combopurifier/combopurifier_s
     catchup=False,
     tags=['combopurifier', 'sqs', 'webhook', 'spark', 'minio', 'kubernetes', 's3'],
     max_active_runs=1,
-    user_defined_filters={'fromjson': lambda s: json.loads(s)},
+    user_defined_filters={
+        'fromjson': lambda s: json.loads(s),
+        'tojson': lambda x: json.dumps(x)
+    },
 )
 def init():
     @task
@@ -92,7 +95,7 @@ def init():
     combopurifier_spark = SparkKubernetesOperator(
         task_id='combopurifier_spark',
         namespace='spark-jobs',
-        template_spec="{{ task_instance.xcom_pull(task_ids='render_template') }}",
+        template_spec="{{ task_instance.xcom_pull(task_ids='render_template') }}", # i need this as dict
         kubernetes_conn_id='kubernetes_in_cluster',
         do_xcom_push=False,
     )
@@ -105,7 +108,7 @@ def init():
         task_id='send_to_dlq',
         aws_conn_id=SQS_PUBLISHER_CONNECTION_ID,
         sqs_queue=SQS_DLQ_QUEUE_URL,
-        message_content="{{ task_instance.xcom_pull(task_ids='render_dlq_payload') }}",
+        message_content="{{ task_instance.xcom_pull(task_ids='render_dlq_payload') | tojson }}", # i need this as string
         message_attributes={},
         delay_seconds=0,
         message_group_id=None,
