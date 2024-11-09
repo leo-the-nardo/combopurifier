@@ -38,6 +38,13 @@ def spark_job(spark: SparkSession, params, *args, **kwargs):
     matching_emails_df = spark.sql("SELECT email_tel FROM matching_emails")
     matching_emails_df.write.mode("overwrite").text(s3_output_path)
 
+    # Check if the master path exists, create if it doesn't
+    try:
+        spark.read.format("delta").load(s3_master_combo_path)
+    except Exception as e:
+        # If the path does not exist, create an empty Delta table
+        empty_df = spark.createDataFrame([], schema="email_tel STRING")
+        empty_df.write.format("delta").save(s3_master_combo_path)
     # Append the matching emails to the master delta table
     spark.sql(f"""
         INSERT INTO delta.`{s3_master_combo_path}`
