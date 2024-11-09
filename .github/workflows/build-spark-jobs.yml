@@ -20,7 +20,7 @@ jobs:
   detect_changes:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      matrix: ${{ steps.extract-jobs.outputs.matrix }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -52,27 +52,22 @@ jobs:
           unique_jobs=($(printf "%s\n" "${changed_jobs[@]}" | sort -u))
 
           # Convert to JSON array
-          jobs_json=$(printf '%s\n' "${unique_jobs[@]}" | jq -R . | jq -s . | tr -d '\n')
-
-          # Check if jobs_json is empty and set accordingly
-          if [ "$jobs_json" = "[]" ]; then
-            echo "matrix={}" >> $GITHUB_OUTPUT
+          if [ ${#unique_jobs[@]} -eq 0 ]; then
+            jobs_json="[]"
           else
-            # Set the matrix output with key 'job'
-            printf "matrix={\"job\": %s}\n" "$jobs_json" >> $GITHUB_OUTPUT
+            jobs_json=$(printf '%s\n' "${unique_jobs[@]}" | jq -R . | jq -s .)
           fi
 
-      - name: Debug Matrix Output
-        run: echo "Matrix Output: ${{ steps.set-matrix.outputs.matrix }}"
+          # Set the matrix output with key 'job'
+          echo "matrix={\"job\": $jobs_json}" >> $GITHUB_OUTPUT
 
-      - name: Set matrix
-        id: set-matrix
+      - name: Debug Matrix Output
         run: |
-          echo "matrix=${{ steps.extract-jobs.outputs.matrix }}" >> $GITHUB_OUTPUT
+          echo "Matrix Output: ${{ steps.extract-jobs.outputs.matrix }}"
 
   build_and_push:
     needs: detect_changes
-    if: needs.detect_changes.outputs.matrix != '{}'
+    if: needs.detect_changes.outputs.matrix != '{"job":[]}'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -105,7 +100,7 @@ jobs:
 
   update_yaml:
     needs: build_and_push
-    if: needs.detect_changes.outputs.matrix != '{}'
+    if: needs.detect_changes.outputs.matrix != '{"job":[]}'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
