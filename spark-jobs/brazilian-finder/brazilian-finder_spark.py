@@ -35,11 +35,8 @@ def spark_job(spark: SparkSession, params, *args, **kwargs):
     """)
 
     # Write to silver delta table as a .txt file with original emails
-    spark.sql(f"""
-        INSERT OVERWRITE TEXT.`{s3_output_path}`
-        SELECT email_tel
-        FROM matching_emails
-    """)
+    matching_emails_df = spark.sql("SELECT email_tel FROM matching_emails")
+    matching_emails_df.write.mode("overwrite").text(s3_output_path)
 
     # Append the matching emails to the master delta table
     spark.sql(f"""
