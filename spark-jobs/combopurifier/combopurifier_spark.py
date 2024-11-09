@@ -10,6 +10,7 @@ from pyspark.sql.functions import (
 def spark_job(spark: SparkSession, params, *args, **kwargs):
     s3_input_combo_path = params.get("source_bucket")
     s3_output_combo_path = params.get("target_bucket")
+    s3_output_delta_combo_path = params.get("target_bucket_delta")
     s3_master_combo_path = params.get("master_bucket")
 
     # 3. Read Incoming File
@@ -45,15 +46,20 @@ def spark_job(spark: SparkSession, params, *args, **kwargs):
     df_new_data = df_new_data.repartition(1).cache()
 
     df_new_data.coalesce(1).write \
-        .mode("overwrite") \
+        .mode("append") \
         .text(s3_output_combo_path)
 
-    df_combined_master = df_master.unionByName(df_new_data)
-
-    df_combined_master.write \
+    df_new_data.write \
+        .mode("append") \
         .format("delta") \
-        .mode("overwrite") \
+        .save(s3_output_delta_combo_path)
+
+    df_new_data.write \
+        .format("delta") \
+        .mode("append") \
+        .option("delta.enableChangeDataFeed", "true") \
         .save(s3_master_combo_path)
+
     df_new_data.unpersist()
 
 if __name__ == "__main__":

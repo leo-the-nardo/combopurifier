@@ -1,15 +1,15 @@
 apiVersion: "sparkoperator.k8s.io/v1beta2"
 kind: SparkApplication
 metadata:
-  name: combopurifier
+  name: brazilian-finder
   namespace: spark-jobs
 spec:
   arguments:
-    - job_name=combopurifier-job
-    - source_bucket=s3a://landing/{{ file_input_key }}
-    - target_bucket=s3a://lakehouse/bronze/combos/job-combopurifier-{{ id }}
-    - target_bucket_delta=s3a://lakehouse/bronze/combos/job-combopurifier-{{ id }}-delta
-    - master_bucket=s3a://lakehouse/silver/combos/master
+    - job_name=brazilian-finder-job
+    - source_bucket=s3a://lakehouse/bronze/combos/job-combopurifier-{{ id }}-delta
+    - output_bucket=s3a://lakehouse/silver/combos/brazilian/job-combopurifier-{{ id }}
+    - master_bucket=s3a://lakehouse/silver/combos/master-brazilian
+    - brazilian_words_bucket=s3a://lakehouse/etc/brazilian_words.txt
   sparkConf:
     spark.hadoop.fs.s3a.impl: "org.apache.hadoop.fs.s3a.S3AFileSystem"
     spark.sql.extensions: "io.delta.sql.DeltaSparkSessionExtension"

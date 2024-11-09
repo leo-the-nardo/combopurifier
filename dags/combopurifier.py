@@ -24,7 +24,8 @@ SQS_CONSUMER_CONNECTION_ID = 'sqs-connection-combopretifier'
 SQS_PUBLISHER_CONNECTION_ID = 'sqs-publisher-combopurifier'
 SQS_QUEUE_URL = 'https://sqs.us-east-2.amazonaws.com/068064050187/input-notification'
 SQS_DLQ_QUEUE_URL = 'https://sqs.us-east-2.amazonaws.com/068064050187/input-notification-dlq'
-TEMPLATE_PATH = "/opt/airflow/dags/repo/spark-jobs/combopurifier/combopurifier_spark.yaml"
+COMBOPURIFIER_SPARK_YAML_PATH = "/opt/airflow/dags/repo/spark-jobs/combopurifier/combopurifier_spark.yaml"
+BRAZILIANFINDER_SPARK_YAML_PATH = "/opt/airflow/dags/repo/spark-jobs/brazilian-finder/brazilian-finder_spark.yaml"
 
 @dag(
     dag_id='combopurifier-dag',
@@ -42,15 +43,18 @@ TEMPLATE_PATH = "/opt/airflow/dags/repo/spark-jobs/combopurifier/combopurifier_s
     render_template_as_native_obj=True
 )
 def init():
-    @task
     def render_template(**context):
         messages = context['ti'].xcom_pull(task_ids='wait_for_sqs_message', key='messages') or []
         object_key = unquote(json.loads(messages[0]['Body'])['Records'][0]['s3']['object']['key'])
         unique_id = f"{context['dag'].dag_id}-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{object_key.replace('/', '_').replace('.', '_')}"
-        with open(TEMPLATE_PATH) as file:
-            rendered_yaml = jinja2.Template(file.read()).render(file_input_key=object_key, id=unique_id)
-        return json.dumps(yaml.safe_load(rendered_yaml))
-
+        with open(COMBOPURIFIER_SPARK_YAML_PATH) as file:
+            combopurifier_rendered_yaml = jinja2.Template(file.read()).render(file_input_key=object_key, id=unique_id)
+        with open(BRAZILIANFINDER_SPARK_YAML_PATH) as file:
+            brazilianfinder_rendered_yaml = jinja2.Template(file.read()).render(file_input_key=object_key, id=unique_id)
+        return json.dumps({
+            "combopurifier_spark": yaml.safe_load(combopurifier_rendered_yaml),
+            "brazilian_finder_spark": yaml.safe_load(brazilianfinder_rendered_yaml)
+        })
     @task(trigger_rule=TriggerRule.ONE_FAILED)
     def render_dlq_payload(**context):
         task_instances = context['ti'].get_dagrun().get_task_instances()
@@ -93,7 +97,14 @@ def init():
     combopurifier_spark = SparkKubernetesOperator(
         task_id='combopurifier_spark',
         namespace='spark-jobs',
-        template_spec="{{ task_instance.xcom_pull(task_ids='render_template') | fromjson }}",
+        template_spec="{{ task_instance.xcom_pull(task_ids='render_template').combopurifier_spark | fromjson }}",
+        kubernetes_conn_id='kubernetes_in_cluster',
+        do_xcom_push=False,
+    )
+    brazilian_finder_spark = SparkKubernetesOperator(
+        task_id='brazilian_finder_spark',
+        namespace='spark-jobs',
+        template_spec="{{ task_instance.xcom_pull(task_ids='render_template').brazilian_finder_spark | fromjson }}",
         kubernetes_conn_id='kubernetes_in_cluster',
         do_xcom_push=False,
     )
@@ -110,7 +121,7 @@ def init():
         message_group_id=None,
     )
 
-    start >> wait_for_sqs_message >> render_yaml >> combopurifier_spark >> end
-    [wait_for_sqs_message, render_yaml, combopurifier_spark] >> failure_payload >> send_to_dlq
+    start >> wait_for_sqs_message >> render_yaml >> combopurifier_spark >> brazilian_finder_spark >> end
+    [wait_for_sqs_message, render_yaml, combopurifier_spark, brazilian_finder_spark] >> failure_payload >> send_to_dlq
 
 dag = init()
