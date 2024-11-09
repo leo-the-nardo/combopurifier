@@ -25,12 +25,9 @@ spec:
     spark.hadoop.fs.s3a.ssl.enabled: "False"
   type: Python
   mode: cluster
-#  image: "tiagotxm/owshq:spark-3.2.3-delta"
-#  image: "leothenardo/spark-py-delta-s3a-combopurifier:3.5.3"
-  image: "leothenardo/spark-combopurifier:1.0.1"
+  image: "leothenardo/spark-combopurifier:1.1.0"
   imagePullPolicy: IfNotPresent
   mainApplicationFile: "local:///opt/spark/scripts/combopurifier_spark.py"
-#  mainApplicationFile: "s3a://spok-scripts/job-with-parameters.py"
   sparkVersion: "3.5.3"
   restartPolicy:
     type: Never
