@@ -45,9 +45,9 @@ spec:
     labels:
       version: "3.5.3"
   executor:
-    cores: 3
+    cores: 5
     instances: 2
-    memory: "4096m"
+    memory: "12000m" #12gb
     envFrom:
       - secretRef:
           name: s3-onprem-combopurifier
