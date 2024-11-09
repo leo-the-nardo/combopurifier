@@ -52,10 +52,11 @@ def init():
             combopurifier_rendered_yaml = jinja2.Template(file.read()).render(file_input_key=object_key, id=unique_id)
         with open(BRAZILIANFINDER_SPARK_YAML_PATH) as file:
             brazilianfinder_rendered_yaml = jinja2.Template(file.read()).render(file_input_key=object_key, id=unique_id)
-        return json.dumps({
+        return {
             "combopurifier_spark": yaml.safe_load(combopurifier_rendered_yaml),
             "brazilian_finder_spark": yaml.safe_load(brazilianfinder_rendered_yaml)
-        })
+        }
+
     @task(trigger_rule=TriggerRule.ONE_FAILED)
     def render_dlq_payload(**context):
         task_instances = context['ti'].get_dagrun().get_task_instances()
@@ -98,14 +99,14 @@ def init():
     combopurifier_spark = SparkKubernetesOperator(
         task_id='combopurifier_spark',
         namespace='spark-jobs',
-        template_spec="{{ task_instance.xcom_pull(task_ids='render_template').combopurifier_spark | fromjson }}",
+        template_spec="{{ task_instance.xcom_pull(task_ids='render_template').combopurifier_spark }}",
         kubernetes_conn_id='kubernetes_in_cluster',
         do_xcom_push=False,
     )
     brazilian_finder_spark = SparkKubernetesOperator(
         task_id='brazilian_finder_spark',
         namespace='spark-jobs',
-        template_spec="{{ task_instance.xcom_pull(task_ids='render_template').brazilian_finder_spark | fromjson }}",
+        template_spec="{{ task_instance.xcom_pull(task_ids='render_template').brazilian_finder_spark }}",
         kubernetes_conn_id='kubernetes_in_cluster',
         do_xcom_push=False,
     )
