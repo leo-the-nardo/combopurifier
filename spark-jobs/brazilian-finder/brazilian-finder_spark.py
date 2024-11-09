@@ -43,7 +43,7 @@ def spark_job(spark: SparkSession, params, *args, **kwargs):
         FROM matching_emails
     """)
 
-    # Append the matching emails to the ma ster delt ta table
+    # Append the matching emails to the ma ster delt ta table 
     spark.sql(f"""
         INSERT INTO delta.`{s3_master_combo_path}`
         SELECT email_tel
