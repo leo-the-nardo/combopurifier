@@ -43,6 +43,7 @@ BRAZILIANFINDER_SPARK_YAML_PATH = "/opt/airflow/dags/repo/spark-jobs/brazilian-f
     render_template_as_native_obj=True
 )
 def init():
+    @task
     def render_template(**context):
         messages = context['ti'].xcom_pull(task_ids='wait_for_sqs_message', key='messages') or []
         object_key = unquote(json.loads(messages[0]['Body'])['Records'][0]['s3']['object']['key'])
