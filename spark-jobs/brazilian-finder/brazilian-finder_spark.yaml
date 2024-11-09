@@ -25,7 +25,7 @@ spec:
     spark.hadoop.fs.s3a.ssl.enabled: "False"
   type: Python
   mode: cluster
-  image: "leothenardo/spark-brazilian-finder:2fb90a2790a77691379f9a7f09a048741a622470"
+  image: "leothenardo/spark-brazilian-finder:786e07f2522173607ecb8190eb71d658d51be7b9"
   imagePullPolicy: IfNotPresent
   mainApplicationFile: "local:///opt/spark/scripts/job.py"
   sparkVersion: "3.5.3"
