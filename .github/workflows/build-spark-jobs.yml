@@ -58,14 +58,14 @@ jobs:
           # Convert to JSON array
           jobs_json=$(printf '%s\n' "${unique_jobs[@]}" | jq -R . | jq -s .)
 
-          # Set the matrix output
-          echo "matrix={\"jobs\": $jobs_json}" >> $GITHUB_OUTPUT
+          # Set the matrix output with key 'job'
+          echo "matrix={\"job\": $jobs_json}" >> $GITHUB_OUTPUT
 
       - name: Set matrix
         id: set-matrix
         run: |
           jobs=${{ steps.extract-jobs.outputs.matrix }}
-          if [ "$jobs" = "{\"jobs\":[]}" ]; then
+          if [ "$jobs" = "{\"job\":[]}" ]; then
             jobs="[]"
           fi
           echo "matrix=$jobs" >> $GITHUB_OUTPUT
@@ -76,7 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        job: ${{ fromJson(needs.detect_changes.outputs.matrix).jobs }}
+        job: ${{ fromJson(needs.detect_changes.outputs.matrix).job }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -121,7 +121,7 @@ jobs:
       - name: Update image references in YAML files
         run: |
           # Extract jobs from matrix
-          jobs=$(echo '${{ needs.detect_changes.outputs.matrix }}' | jq -r '.jobs[]')
+          jobs=$(echo '${{ needs.detect_changes.outputs.matrix }}' | jq -r '.job[]')
 
           for job in $jobs; do
             yaml_file="./spark-jobs/${job}/${job}_spark.yaml"
