@@ -36,7 +36,7 @@ def spark_job(spark: SparkSession, params, *args, **kwargs):
           ON e.email_lower LIKE CONCAT('%', w.word, '%')
     """)
 
-    # Write to silver delta table as a .txt file with original emails 
+    # Write to silver delta table as a .txt file with original emails
     spark.sql(f"""
         INSERT OVERWRITE TEXT.`{s3_output_path}`
         SELECT email_tel

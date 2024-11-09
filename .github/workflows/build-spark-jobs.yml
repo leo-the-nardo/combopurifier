@@ -24,44 +24,51 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          fetch-depth: 0  # Fetch all history for accurate diff
 
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
-
-      - name: Get list of changed files
-        id: changed-files
-        run: |
-          echo "CHANGED_FILES<<EOF" >> $GITHUB_ENV
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            git fetch origin ${{ github.event.pull_request.base.ref }} --depth=1
-            git diff --name-only ${{ github.event.pull_request.base.ref }} ${{ github.sha }} >> $GITHUB_ENV
-          else
-            git diff --name-only ${{ github.event.before }} ${{ github.sha }} >> $GITHUB_ENV
-          fi
-          echo "EOF" >> $GITHUB_ENV
+      - name: Set up Paths Filter
+        id: filter
+        uses: dorny/paths-filter@v2
+        with:
+          filters: |
+            spark_jobs:
+              - 'spark-jobs/**.py'
+              - 'spark-jobs/**/Dockerfile'
+              - 'spark-jobs/**/requirements.txt'
+              - 'spark-jobs/spark_session.py'
+              - 'spark-jobs/**/*.yaml'
 
       - name: Extract changed spark jobs
         id: extract-jobs
         run: |
-          echo "$CHANGED_FILES" | grep '^spark-jobs/' | awk -F'/' '{print $2}' | sort | uniq > changed_jobs.txt
-          echo "Changed jobs:"
-          cat changed_jobs.txt
-          jobs=$(jq -R -s -c 'split("\n")[:-1]' changed_jobs.txt)
-          echo "jobs=$jobs" >> $GITHUB_OUTPUT
+          # Initialize an empty array
+          changed_jobs=()
+
+          # List all changed files under spark-jobs
+          for file in $(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '^spark-jobs/'); do
+            # Extract the job name (assuming the structure spark-jobs/<job>/...)
+            job=$(echo "$file" | cut -d'/' -f2)
+            changed_jobs+=("$job")
+          done
+
+          # Remove duplicates
+          unique_jobs=($(printf "%s\n" "${changed_jobs[@]}" | sort -u))
+
+          # Convert to JSON array
+          jobs_json=$(printf '%s\n' "${unique_jobs[@]}" | jq -R . | jq -s .)
+
+          # Set the matrix output
+          echo "matrix={\"jobs\": $jobs_json}" >> $GITHUB_OUTPUT
 
       - name: Set matrix
         id: set-matrix
         run: |
-          jobs=${{ steps.extract-jobs.outputs.jobs }}
-          if [ "$jobs" = "null" ]; then
+          jobs=${{ steps.extract-jobs.outputs.matrix }}
+          if [ "$jobs" = "{\"jobs\":[]}" ]; then
             jobs="[]"
           fi
-          echo "matrix={\"jobs\": $jobs}" >> $GITHUB_OUTPUT
+          echo "matrix=$jobs" >> $GITHUB_OUTPUT
 
   build_and_push:
     needs: detect_changes
@@ -73,6 +80,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -88,11 +97,11 @@ jobs:
         with:
           context: ./spark-jobs/${{ matrix.job }}
           push: true
-          tags: leothenardo/spark-${{ matrix.job }}:${{ github.sha }}
-          # Optionally, add more tags like latest or version numbers
-          # tags: |
-          #   leothenardo/spark-${{ matrix.job }}:latest
-          #   leothenardo/spark-${{ matrix.job }}:${{ github.sha }}
+          tags: |
+            leothenardo/spark-${{ matrix.job }}:${{ github.sha }}
+            leothenardo/spark-${{ matrix.job }}:latest
+          cache-from: type=registry,ref=leothenardo/spark-${{ matrix.job }}:latest
+          cache-to: type=registry,ref=leothenardo/spark-${{ matrix.job }}:cache,mode=max
 
   update_yaml:
     needs: build_and_push
@@ -102,17 +111,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          # Fetch all history to enable push
-          fetch-depth: 0
+          fetch-depth: 0  # Required to push changes
 
-      - name: Set up yq
+      - name: Install yq
         run: |
           sudo wget https://github.com/mikefarah/yq/releases/download/v4.34.1/yq_linux_amd64 -O /usr/bin/yq
           sudo chmod +x /usr/bin/yq
 
       - name: Update image references in YAML files
         run: |
+          # Extract jobs from matrix
           jobs=$(echo '${{ needs.detect_changes.outputs.matrix }}' | jq -r '.jobs[]')
+
           for job in $jobs; do
             yaml_file="./spark-jobs/${job}/${job}_spark.yaml"
             if [[ -f "$yaml_file" ]]; then
