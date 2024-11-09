@@ -32,7 +32,7 @@ def spark_job(spark: SparkSession, params, *args, **kwargs):
         CREATE OR REPLACE TEMP VIEW matching_emails AS
         SELECT DISTINCT e.email_tel
         FROM emails e
-        JOIN /*+ BROADCAST(w) */ words w
+        JOIN words w /*+ BROADCAST */
           ON e.email_lower LIKE CONCAT('%', w.word, '%')
     """)
 
