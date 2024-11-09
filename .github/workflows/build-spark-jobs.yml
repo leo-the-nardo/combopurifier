@@ -1,0 +1,134 @@
+name: Build, Push, and Update Spark Job Images
+
+on:
+  push:
+    paths:
+      - 'spark-jobs/**.py'
+      - 'spark-jobs/**/Dockerfile'
+      - 'spark-jobs/**/requirements.txt'
+      - 'spark-jobs/spark_session.py'
+      - 'spark-jobs/**/*.yaml'
+  pull_request:
+    paths:
+      - 'spark-jobs/**.py'
+      - 'spark-jobs/**/Dockerfile'
+      - 'spark-jobs/**/requirements.txt'
+      - 'spark-jobs/spark_session.py'
+      - 'spark-jobs/**/*.yaml'
+
+jobs:
+  detect_changes:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Get list of changed files
+        id: changed-files
+        run: |
+          echo "CHANGED_FILES<<EOF" >> $GITHUB_ENV
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin ${{ github.event.pull_request.base.ref }} --depth=1
+            git diff --name-only ${{ github.event.pull_request.base.ref }} ${{ github.sha }} >> $GITHUB_ENV
+          else
+            git diff --name-only ${{ github.event.before }} ${{ github.sha }} >> $GITHUB_ENV
+          fi
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Extract changed spark jobs
+        id: extract-jobs
+        run: |
+          echo "$CHANGED_FILES" | grep '^spark-jobs/' | awk -F'/' '{print $2}' | sort | uniq > changed_jobs.txt
+          echo "Changed jobs:"
+          cat changed_jobs.txt
+          jobs=$(jq -R -s -c 'split("\n")[:-1]' changed_jobs.txt)
+          echo "jobs=$jobs" >> $GITHUB_OUTPUT
+
+      - name: Set matrix
+        id: set-matrix
+        run: |
+          jobs=${{ steps.extract-jobs.outputs.jobs }}
+          if [ "$jobs" = "null" ]; then
+            jobs="[]"
+          fi
+          echo "matrix={\"jobs\": $jobs}" >> $GITHUB_OUTPUT
+
+  build_and_push:
+    needs: detect_changes
+    if: needs.detect_changes.outputs.matrix != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        job: ${{ fromJson(needs.detect_changes.outputs.matrix).jobs }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and Push Docker image for ${{ matrix.job }}
+        uses: docker/build-push-action@v4
+        with:
+          context: ./spark-jobs/${{ matrix.job }}
+          push: true
+          tags: leothenardo/spark-${{ matrix.job }}:${{ github.sha }}
+          # Optionally, add more tags like latest or version numbers
+          # tags: |
+          #   leothenardo/spark-${{ matrix.job }}:latest
+          #   leothenardo/spark-${{ matrix.job }}:${{ github.sha }}
+
+  update_yaml:
+    needs: build_and_push
+    if: needs.detect_changes.outputs.matrix != '[]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          # Fetch all history to enable push
+          fetch-depth: 0
+
+      - name: Set up yq
+        run: |
+          sudo wget https://github.com/mikefarah/yq/releases/download/v4.34.1/yq_linux_amd64 -O /usr/bin/yq
+          sudo chmod +x /usr/bin/yq
+
+      - name: Update image references in YAML files
+        run: |
+          jobs=$(echo '${{ needs.detect_changes.outputs.matrix }}' | jq -r '.jobs[]')
+          for job in $jobs; do
+            yaml_file="./spark-jobs/${job}/${job}_spark.yaml"
+            if [[ -f "$yaml_file" ]]; then
+              echo "Updating image in $yaml_file to leothenardo/spark-${job}:${GITHUB_SHA}"
+              yq eval '.spec.image = "leothenardo/spark-'$job':'$GITHUB_SHA'"' -i "$yaml_file"
+            else
+              echo "YAML file $yaml_file does not exist. Skipping."
+            fi
+          done
+
+      - name: Commit and Push changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add spark-jobs/**/*.yaml
+          git commit -m "Update Docker image tags to $GITHUB_SHA [skip ci]" || echo "No changes to commit"
+          git push
