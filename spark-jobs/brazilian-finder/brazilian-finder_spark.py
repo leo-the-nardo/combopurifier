@@ -1,8 +1,8 @@
 from urllib.parse import quote
-
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, lower, broadcast
+from pyspark.sql.functions import col, lower
 from spark_session import execute_spark
+import re
 
 def spark_job(spark: SparkSession, params, *args, **kwargs):
     # Extract parameters
@@ -10,49 +10,27 @@ def spark_job(spark: SparkSession, params, *args, **kwargs):
     s3_brazilian_words_path = quote(params.get("brazilian_words_bucket"), safe=':/')
     s3_output_path = quote(params.get("output_bucket"), safe=':/')
     s3_master_combo_path = quote(params.get("master_bucket"), safe=':/')
-    # Load and broadcast the words table
+
+    # Load words and collect to a list
     words_df = spark.read.text(s3_brazilian_words_path).select(lower("value").alias("word"))
-    broadcasted_words_df = broadcast(words_df)
-    broadcasted_words_df.createOrReplaceTempView("words")
+    words_list = [row.word for row in words_df.collect()]
 
-    # Register paths as SQL variable s
-    spark.sql(f"""
-        CREATE OR REPLACE TEMP VIEW bronze_table AS
-        SELECT *
-        FROM delta.`{s3_input_combo_path}`
-    """)
+    # Create regex pattern
+    pattern = '|'.join([re.escape(word) for word in words_list])
 
-    spark.sql("""
-        CREATE OR REPLACE TEMP VIEW emails AS
-        SELECT DISTINCT LOWER(email_tel) AS email_lower, email_tel
-        FROM bronze_table
-    """)
+    # Read emails and select necessary columns
+    emails_df = spark.read.format('delta').load(s3_input_combo_path) \
+        .select(lower(col('email_tel')).alias('email_lower'), 'email_tel').distinct()
 
-    # Use SQL with broadcast applied to words
-    spark.sql("""
-        CREATE OR REPLACE TEMP VIEW matching_emails AS
-        SELECT DISTINCT e.email_tel
-        FROM emails e
-        JOIN words w ON e.email_lower LIKE CONCAT('%', w.word, '%')
-    """)
+    # Filter emails using rlike
+    matching_emails_df = emails_df.filter(col('email_lower').rlike(pattern)) \
+        .select('email_tel').distinct()
 
-    # Write to silver delta table as a .txt file with original emails
-    matching_emails_df = spark.sql("SELECT email_tel FROM matching_emails")
+    # Write matching emails to output path
     matching_emails_df.write.mode("overwrite").text(s3_output_path)
 
-    # Check if the master path exists, create if it doesn't
-    try:
-        spark.read.format("delta").load(s3_master_combo_path)
-    except Exception as e:
-        # If the path does not exist, create an empty Delta table
-        empty_df = spark.createDataFrame([], schema="email_tel STRING")
-        empty_df.write.format("delta").save(s3_master_combo_path)
-    # Append the matching emails to the master delta table
-    spark.sql(f"""
-        INSERT INTO delta.`{s3_master_combo_path}`
-        SELECT email_tel
-        FROM matching_emails
-    """)
+    # Append matching emails to the master delta table
+    matching_emails_df.write.format("delta").mode("append").save(s3_master_combo_path)
 
 if __name__ == "__main__":
     execute_spark(method=spark_job)
