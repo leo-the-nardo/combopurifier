@@ -1,3 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spark-history-server-config
+  namespace: spark-jobs
+  labels:
+    app: spark-history-server
+data:
+  spark-defaults.conf: |
+    spark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem
+    spark.eventLog.enabled=true
+    spark.history.fs.logDirectory=s3a://logs/spark-history
+    spark.eventLog.dir=s3a://logs/spark-history
+    spark.hadoop.fs.s3a.endpoint=http://minio.minio-dev.svc.cluster.local:9000
+    spark.hadoop.fs.s3a.fast.upload=true
+    spark.hadoop.fs.s3a.path.style.access=true
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -16,19 +32,10 @@ spec:
     spec:
       containers:
         - name: spark-history-server
-#          image: apache/spark:latest  # Ensure compatibility with your Spark version
-          image: cloudificando/spark-py-s3a-delta:3.5.3  # Ensure compatibility with your Spark version
+          image: cloudificando/spark-history:aws-gcp-3.5.0  # Ensure compatibility with your Spark version
           imagePullPolicy: Always
-          command:
-            - /opt/spark/bin/spark-class
-            - -Dspark.eventLog.enabled=true
-            - -Dspark.history.fs.logDirectory=s3a://logs/spark-history
-            - -Dspark.eventLog.dir=s3a://logs/spark-history
-            - -Divy.cache.dir=/tmp
-            - -Divy.home=/tmp
-            - -Dspark.history.ui.port=18080
-            - -Dspark.hadoop.fs.s3a.endpoint=http://minio.minio-dev.svc.cluster.local:9000
-            - org.apache.spark.deploy.history.HistoryServer
+          args:
+            - history-server
           ports:
             - name: http
               protocol: TCP
@@ -43,9 +50,6 @@ spec:
             httpGet:
               path: /
               port: http
-          envFrom:
-            - configMapRef:
-                name: spark-history-server-config
           env:
             - name: AWS_ACCESS_KEY_ID
               valueFrom:
@@ -69,6 +73,15 @@ spec:
             limits:
               memory: "2.5Gi"
               cpu: "1"
+          volumeMounts:
+            - name: spark-history-server-conf
+              mountPath: /opt/spark/conf
+            # Add any additional volume mounts here
+      volumes:
+        - name: spark-history-server-conf
+          configMap:
+            name: spark-history-server-config  # ConfigMap name for Spark configs
+
 ---
 apiVersion: v1
 kind: Service
