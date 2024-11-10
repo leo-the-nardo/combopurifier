@@ -11,7 +11,6 @@ spec:
     - master_bucket=s3a://lakehouse/silver/combos/master-brazilian
     - brazilian_words_bucket=s3a://lakehouse/etc/brazilian_words.txt
   sparkConf:
-    spark.plugins: "io.dataflint.spark.SparkDataflintPlugin"
     spark.hadoop.fs.s3a.impl: "org.apache.hadoop.fs.s3a.S3AFileSystem"
     spark.sql.extensions: "io.delta.sql.DeltaSparkSessionExtension"
     spark.sql.catalog.spark_catalog: "org.apache.spark.sql.delta.catalog.DeltaCatalog"
@@ -26,6 +25,7 @@ spec:
     spark.hadoop.fs.s3a.ssl.enabled: "False"
     spark.eventLog.enabled: "True"
     spark.eventLog.dir: "s3a://logs/spark-history"
+#    spark.plugins: "io.dataflint.spark.SparkDataflintPlugin"
 
   type: Python
   mode: cluster
