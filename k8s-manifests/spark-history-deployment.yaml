@@ -32,7 +32,8 @@ spec:
     spec:
       containers:
         - name: spark-history-server
-          image: cloudificando/spark-history:aws-gcp-3.5.0  # Ensure compatibility with your Spark version
+#          image: cloudificando/spark-history:aws-gcp-3.5.0
+          image: cloudificando/spark-history:aws-gcp-dataflink-3.5.0
           imagePullPolicy: Always
           args:
             - history-server
