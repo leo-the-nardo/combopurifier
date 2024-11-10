@@ -7,11 +7,13 @@ from pyspark.sql.functions import (
     trim,
     col
 )
+from urllib.parse import quote
 def spark_job(spark: SparkSession, params, *args, **kwargs):
-    s3_input_combo_path = params.get("source_bucket")
-    s3_output_combo_path = params.get("target_bucket")
-    s3_output_delta_combo_path = params.get("target_bucket_delta")
-    s3_master_combo_path = params.get("master_bucket")
+
+    s3_input_combo_path = quote(params.get("source_bucket"), safe=':/')
+    s3_output_combo_path = quote(params.get("target_bucket"), safe=':/')
+    s3_output_delta_combo_path = quote(params.get("target_bucket_delta"), safe=':/')
+    s3_master_combo_path = quote(params.get("master_bucket"), safe=':/')
 
     # 3. Read Incoming File
     df_raw = spark.read.text(s3_input_combo_path)

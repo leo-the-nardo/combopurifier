@@ -1,13 +1,15 @@
+from urllib.parse import quote
+
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, lower, broadcast
 from spark_session import execute_spark
 
 def spark_job(spark: SparkSession, params, *args, **kwargs):
     # Extract parameters
-    s3_input_combo_path = params.get("source_bucket")
-    s3_brazilian_words_path = params.get("brazilian_words_bucket")
-    s3_output_path = params.get("output_bucket")
-    s3_master_combo_path = params.get("master_bucket")
+    s3_input_combo_path = quote(params.get("source_bucket"), safe=':/')
+    s3_brazilian_words_path = quote(params.get("brazilian_words_bucket"), safe=':/')
+    s3_output_path = quote(params.get("output_bucket"), safe=':/')
+    s3_master_combo_path = quote(params.get("master_bucket"), safe=':/')
     # Load and broadcast the words table
     words_df = spark.read.text(s3_brazilian_words_path).select(lower("value").alias("word"))
     broadcasted_words_df = broadcast(words_df)
