@@ -31,7 +31,7 @@ jobs:
         run: |
           CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }})
           echo "Changed files: $CHANGED_FILES"
-          SUBFOLDERS=$(echo "$CHANGED_FILES" | grep '^spark-jobs/[^/]\+/.*\.py$' | awk -F/ '{print $2}' | sort | uniq)
+          SUBFOLDERS=$(echo "$CHANGED_FILES" | grep '^spark-jobs/[^/]\+/.*\.py$' | awk -F/ '{print $2}' | sort | uniq | tr '\n' ' ')
           echo "SUBFOLDERS=$SUBFOLDERS" >> $GITHUB_ENV
 
       - name: Log in to Docker Hub
