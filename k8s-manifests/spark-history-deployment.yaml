@@ -8,6 +8,13 @@ data:
     -Dspark.history.fs.logDirectory=s3a://logs/spark-history
     -Dspark.history.ui.port=18080
     -Dspark.hadoop.fs.s3a.endpoint=http://minio.minio-dev.svc.cluster.local:9000
+    -Dspark.history.fs.update.interval=5s
+    -Dspark.history.ui.port=18080
+    -Dspark.history.fs.cleaner.enabled=true
+    -Dspark.history.fs.cleaner.interval=1d
+    -Dspark.history.fs.cleaner.maxAge=7d
+    -Dspark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem
+    -Dlog4j.rootCategory=DEBUG,console
 ---
 apiVersion: apps/v1
 kind: Deployment
