@@ -15,7 +15,7 @@ def spark_job(spark: SparkSession, params, *args, **kwargs):
     broadcasted_words_df = broadcast(words_df)
     broadcasted_words_df.createOrReplaceTempView("words")
 
-    # Register paths as SQL variables
+    # Register paths as SQL variable s
     spark.sql(f"""
         CREATE OR REPLACE TEMP VIEW bronze_table AS
         SELECT *

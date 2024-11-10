@@ -15,7 +15,7 @@ def spark_job(spark: SparkSession, params, *args, **kwargs):
     s3_output_delta_combo_path = quote(params.get("target_bucket_delta"), safe=':/')
     s3_master_combo_path = quote(params.get("master_bucket"), safe=':/')
 
-    # 3. Read Incoming File
+    # 3. Read Incomin g File
     df_raw = spark.read.text(s3_input_combo_path)
 
     delimiter = "|||"
