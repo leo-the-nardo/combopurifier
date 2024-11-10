@@ -45,6 +45,8 @@ jobs:
         env:
           SUBFOLDERS: ${{ env.SUBFOLDERS }}
         run: |
+          set -e
+          set -x
           # Loop over each changed subfolder and build/push the Docker image
           for SUBFOLDER in $SUBFOLDERS; do
             echo "Processing subfolder: $SUBFOLDER"
@@ -65,9 +67,11 @@ jobs:
 
             # Update the .yaml files in the subfolder
             echo "Updating YAML files in $SUBFOLDER"
-            for YAML_FILE in ./spark-jobs/$SUBFOLDER/*.yaml; do
+            YAML_FILES=$(find ./spark-jobs/$SUBFOLDER -name "*.yaml")
+            echo "Found YAML files: $YAML_FILES"
+            for YAML_FILE in $YAML_FILES; do
               echo "Updating YAML file: $YAML_FILE"
-              sed -i "s|image: .*|image: \"$DOCKER_IMAGE\"|" "$YAML_FILE"
+              sed -i "s|^\([ \t]*image:\)[ \t]*.*$|\1 \"$DOCKER_IMAGE\"|" "$YAML_FILE"
             done
           done
 
