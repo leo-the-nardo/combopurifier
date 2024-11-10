@@ -1,20 +1,3 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: spark-history-server-config
-  namespace: spark-jobs
-data:
-  SPARK_HISTORY_OPTS: |
-    -Dspark.history.fs.logDirectory=s3a://logs/spark-history
-    -Dspark.history.ui.port=18080
-    -Dspark.hadoop.fs.s3a.endpoint=http://minio.minio-dev.svc.cluster.local:9000
-    -Dspark.history.fs.update.interval=5s
-    -Dspark.history.ui.port=18080
-    -Dspark.history.fs.cleaner.enabled=true
-    -Dspark.history.fs.cleaner.interval=1d
-    -Dspark.history.fs.cleaner.maxAge=7d
-    -Dspark.hadoop.fs.s3a.impl=org.apache.hadoop.fs.s3a.S3AFileSystem
-    -Dlog4j.rootCategory=DEBUG,console
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -33,10 +16,33 @@ spec:
     spec:
       containers:
         - name: spark-history-server
-          image: apache/spark:3.5.3  # Ensure compatibility with your Spark version
-#          image: apache:3.5.3  # Ensure compatibility with your Spark version
+#          image: apache/spark:latest  # Ensure compatibility with your Spark version
+          image: cloudificando/spark-py-s3a-delta:3.5.3  # Ensure compatibility with your Spark version
           imagePullPolicy: Always
-          command: ["/bin/bash", "-c", "if [ -f /opt/spark/sbin/start-history-server.sh ]; then /opt/spark/sbin/start-history-server.sh; elif [ -f /usr/local/spark/sbin/start-history-server.sh ]; then /usr/local/spark/sbin/start-history-server.sh; else echo 'start-history-server.sh not found'; fi"]
+          command:
+            - /opt/spark/bin/spark-class
+            - -Dspark.eventLog.enabled=true
+            - -Dspark.history.fs.logDirectory=s3a://logs/spark-history
+            - -Dspark.eventLog.dir=s3a://logs/spark-history
+            - -Divy.cache.dir=/tmp
+            - -Divy.home=/tmp
+            - -Dspark.history.ui.port=18080
+            - -Dspark.hadoop.fs.s3a.endpoint=http://minio.minio-dev.svc.cluster.local:9000
+            - org.apache.spark.deploy.history.HistoryServer
+          ports:
+            - name: http
+              protocol: TCP
+              containerPort: 18080
+          readinessProbe:
+            timeoutSeconds: 4
+            httpGet:
+              path: /
+              port: http
+          livenessProbe:
+            timeoutSeconds: 4
+            httpGet:
+              path: /
+              port: http
           envFrom:
             - configMapRef:
                 name: spark-history-server-config
@@ -56,9 +62,6 @@ spec:
                 secretKeyRef:
                   name: s3-onprem-combopurifier
                   key: AWS_REGION
-          ports:
-            - containerPort: 18080
-              name: http
           resources:
             requests:
               memory: "1Gi"
