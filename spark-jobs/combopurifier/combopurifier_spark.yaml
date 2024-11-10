@@ -27,7 +27,7 @@ spec:
     spark.eventLog.dir: "s3a://logs/spark-history"
   type: Python
   mode: cluster
-  image: "leothenardo/spark-combopurifier:1.1.0"
+  image: "leothenardo/spark-combopurifier:e673a9277b2ddf9397830d764b27139d697c998b"
   imagePullPolicy: IfNotPresent
   mainApplicationFile: "local:///opt/spark/scripts/combopurifier_spark.py"
   sparkVersion: "3.5.3"
