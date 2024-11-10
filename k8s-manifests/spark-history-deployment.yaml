@@ -1,0 +1,114 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: spark-history-server-config
+  namespace: spark-jobs
+data:
+  SPARK_HISTORY_OPTS: |
+    -Dspark.history.fs.logDirectory=s3a://logs/spark-history
+    -Dspark.history.ui.port=18080
+    -Dspark.hadoop.fs.s3a.endpoint=http://minio.minio-dev.svc.cluster.local:9000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: spark-history-server
+  namespace: spark-jobs
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: spark-history-server
+  template:
+    metadata:
+      labels:
+        app: spark-history-server
+    spec:
+      containers:
+        - name: spark-history-server
+          image: apache/spark:3.5.3  # Ensure compatibility with your Spark version
+#          image: apache:3.5.3  # Ensure compatibility with your Spark version
+          imagePullPolicy: Always
+          command: ["/bin/bash", "-c", "if [ -f /opt/spark/sbin/start-history-server.sh ]; then /opt/spark/sbin/start-history-server.sh; elif [ -f /usr/local/spark/sbin/start-history-server.sh ]; then /usr/local/spark/sbin/start-history-server.sh; else echo 'start-history-server.sh not found'; fi"]
+          envFrom:
+            - configMapRef:
+                name: spark-history-server-config
+          env:
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: s3-onprem-combopurifier
+                  key: AWS_ACCESS_KEY_ID
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: s3-onprem-combopurifier
+                  key: AWS_SECRET_ACCESS_KEY
+            - name: AWS_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: s3-onprem-combopurifier
+                  key: AWS_REGION
+          ports:
+            - containerPort: 18080
+              name: http
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2.5Gi"
+              cpu: "1"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: spark-history-server
+  namespace: spark-jobs
+spec:
+  type: ClusterIP  # Use LoadBalancer or NodePort if external access is needed
+  ports:
+    - port: 18080
+      targetPort: 18080
+      protocol: TCP
+      name: http
+  selector:
+    app: spark-history-server
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: spark-history-ui
+  namespace: gateway
+  annotations:
+    konghq.com/strip-path: "true"
+spec:
+  parentRefs:
+    - name: kong
+      namespace: gateway
+  hostnames:
+    - spark.cloudificando.corp  # Hostname for UI
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: spark-history-server
+          port: 18080  # UI port
+          kind: Service
+          namespace: spark-jobs
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: spark-history
+  namespace: spark-jobs
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: gateway
+  to:
+    - group: ""
+      kind: Service

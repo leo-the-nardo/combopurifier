@@ -23,6 +23,8 @@ spec:
     spark.hadoop.fs.s3a.connection.ssl.strictverify: "False"
     spark.hadoop.fs.s3a.connection.ssl.enabled: "False"
     spark.hadoop.fs.s3a.ssl.enabled: "False"
+    spark.eventLog.enabled: "True"
+    spark.eventLog.dir: "s3a://logs/spark-history"
   type: Python
   mode: cluster
   image: "leothenardo/spark-combopurifier:1.1.0"
@@ -34,6 +36,9 @@ spec:
   deps:
     pyFiles:
       - local:///opt/spark/scripts/spark_session.py
+    packages:
+      - io.dataflint:spark_2.12:0.2.6
+
   driver:
     cores: 1
     coreLimit: "1200m"
