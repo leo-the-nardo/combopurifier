@@ -1,6 +1,7 @@
 from urllib.parse import quote
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, lower
+from pyspark.sql.types import StructType, StructField, StringType
 from spark_session import execute_spark
 import re
 
@@ -27,8 +28,12 @@ def spark_job(spark: SparkSession, params, *args, **kwargs):
     emails_df = spark.read.format('delta').load(s3_input_combo_path) \
         .select(lower(col('email_tel')).alias('email_lower'), 'email_tel').distinct()
 
-    # Initialize an empty DataFrame for the matching emails
-    matching_emails_df = spark.createDataFrame([], emails_df.schema)
+    # Cache emails_df if it's reused multiple times to improve performance
+    emails_df.cache()
+
+    # Initialize an empty DataFrame for the matching emails with only 'email_tel' column
+    schema = StructType([StructField("email_tel", StringType(), True)])
+    matching_emails_df = spark.createDataFrame([], schema)
 
     # Process each pattern separately and union the results
     for pattern in patterns:
