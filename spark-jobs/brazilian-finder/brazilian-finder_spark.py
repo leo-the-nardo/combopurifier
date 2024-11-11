@@ -1,8 +1,8 @@
 from urllib.parse import quote
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, lower, lit, array
+from pyspark.sql.functions import col, lower
 from spark_session import execute_spark
-from functools import reduce
+import re
 
 def spark_job(spark: SparkSession, params, *args, **kwargs):
     # Extract parameters
@@ -13,22 +13,30 @@ def spark_job(spark: SparkSession, params, *args, **kwargs):
 
     # Load words and collect to a list
     words_df = spark.read.text(s3_brazilian_words_path).select(lower("value").alias("word"))
-    words_list = [row.word for row in words_df.collect() if row.word]
+    words_list = [row.word for row in words_df.collect()]
+
+    # Split words_list into smaller chunks to prevent StackOverflowError
+    chunk_size = 50  # Adjust chunk size based on testing
+    patterns = []
+    for i in range(0, len(words_list), chunk_size):
+        chunk = words_list[i:i + chunk_size]
+        pattern = '|'.join([re.escape(word) for word in chunk])
+        patterns.append(pattern)
 
     # Read emails and select necessary columns
     emails_df = spark.read.format('delta').load(s3_input_combo_path) \
-        .select(lower(col('email_tel')).alias('email_lower'), 'email_tel')
+        .select(lower(col('email_tel')).alias('email_lower'), 'email_tel').distinct()
 
-    # Repartition to increase parallelism
-    num_partitions = 100  # Adjust based on your cluster configuration
-    emails_df = emails_df.repartition(num_partitions)
+    # Initialize an empty DataFrame for the matching emails
+    matching_emails_df = spark.createDataFrame([], emails_df.schema)
 
-    # Create a combined condition using 'contains' and 'reduce'
-    conditions = [col('email_lower').contains(word) for word in words_list]
-    combined_condition = reduce(lambda x, y: x | y, conditions)
+    # Process each pattern separately and union the results
+    for pattern in patterns:
+        filtered_df = emails_df.filter(col('email_lower').rlike(pattern)).select('email_tel')
+        matching_emails_df = matching_emails_df.union(filtered_df)
 
-    # Filter emails using the combined condition
-    matching_emails_df = emails_df.filter(combined_condition).select('email_tel').distinct()
+    # Remove duplicates
+    matching_emails_df = matching_emails_df.distinct()
 
     # Write matching emails to output path
     matching_emails_df.write.mode("overwrite").text(s3_output_path)
