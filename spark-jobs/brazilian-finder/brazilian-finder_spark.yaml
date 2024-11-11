@@ -29,7 +29,7 @@ spec:
 
   type: Python
   mode: cluster
-  image: "leothenardo/spark-brazilian-finder:18812d0ec060de635c5cb4968767998e674a3392"
+  image: "leothenardo/spark-brazilian-finder:58410d35150699c53d1d1376b10b2550868c382c"
   imagePullPolicy: IfNotPresent
   mainApplicationFile: "local:///opt/spark/scripts/job.py"
   sparkVersion: "3.5.3"
